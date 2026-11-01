@@ -97,6 +97,13 @@ Listen for changes on the switch or any ancestor:
   after mount the root gets `aria-labelledby` pointing at the hidden input's label (an `id` is
   generated for the label if it has none). This is skipped when the host already has `aria-label`
   or `aria-labelledby`. A `<button>` root is named by its label natively.
+- **Field:** inside `<field.Context>` the switch is the field's control. The hidden checkbox gets
+  the field's control id (so `<label mix={field.label()}>` targets it, and clicking it toggles the
+  switch) and the field's `name`; `required` and the field's `validate` (called with the checked
+  state) run on it. The root gets `aria-labelledby` (the field label, also on a `<button>` root),
+  `aria-describedby` (descriptions and visible errors), `aria-invalid`, the field state
+  attributes, and is focused when the field blocks a form submission. Server `errors` show until
+  the switch is toggled. The field's (or an enclosing `fieldset.Context`'s) `disabled` disables it.
 - Explicit host props win (`attrs()` semantics).
 
 | Key     | Action                                                     |
@@ -108,13 +115,18 @@ Listen for changes on the switch or any ancestor:
 
 Root and thumb get the same attributes. Boolean attributes are present (`""`) or absent.
 
-| Attribute        | Present when      |
-| ---------------- | ----------------- |
-| `data-checked`   | The switch is on  |
-| `data-unchecked` | The switch is off |
-| `data-disabled`  | `disabled` is set |
-| `data-readonly`  | `readOnly` is set |
-| `data-required`  | `required` is set |
+| Attribute        | Present when                               |
+| ---------------- | ------------------------------------------ |
+| `data-checked`   | The switch is on                           |
+| `data-unchecked` | The switch is off                          |
+| `data-disabled`  | `disabled` is set                          |
+| `data-readonly`  | `readOnly` is set                          |
+| `data-required`  | `required` is set                          |
+| `data-valid`     | In a field: validated and valid            |
+| `data-invalid`   | In a field: invalid                        |
+| `data-dirty`     | In a field: changed from the initial state |
+| `data-touched`   | In a field: the root lost focus once       |
+| `data-filled`    | In a field: the switch is on               |
+| `data-focused`   | In a field: the root has focus             |
 
-Field attributes (`data-valid`, `data-invalid`, `data-dirty`, `data-touched`, `data-filled`,
-`data-focused`) will come with Field.
+The root also gets `aria-invalid="true"` while the field is invalid.

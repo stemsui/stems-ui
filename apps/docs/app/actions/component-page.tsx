@@ -6,7 +6,7 @@ import { Layout } from './layout.tsx'
 export function ComponentPage(handle: Handle<{ name: string }>) {
   return () => {
     let { name } = handle.props
-    let { title, description, behavior, Demo } = demos[name]!
+    let { title, description, behavior, Demo, registryItem = name } = demos[name]!
 
     return (
       <Layout title={title} current={name}>
@@ -27,7 +27,7 @@ export function ComponentPage(handle: Handle<{ name: string }>) {
           <section class="flex flex-col gap-2 text-sm">
             <h2 class="text-lg font-semibold">Installation</h2>
             <pre class="overflow-x-auto rounded-md bg-muted px-4 py-3 font-mono text-xs">
-              <code>npx shadcn add @stemsui/{name}</code>
+              <code>npx shadcn add @stemsui/{registryItem}</code>
             </pre>
             <p class="text-muted-foreground">
               Behavior: {behavior.length === 0 ? 'none (styling only)' : null}

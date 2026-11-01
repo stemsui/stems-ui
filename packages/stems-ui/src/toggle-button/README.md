@@ -60,8 +60,8 @@ Listen for changes on the button or any ancestor:
   - `onPressedChange(pressed, event)`: called with the next state and the DOM event that caused
     it.
   - `disabled`: ignore interaction. A `disabled` (or `aria-disabled`) host prop works too.
-  - `value`: identifies the button inside a toggle button group (coming later). Included in
-    change events.
+  - `value`: identifies the button inside a
+    [toggle button group](../toggle-button-group/README.md). Included in change events.
 - `ToggleButtonChangeEvent`: bubbling `stems:toggle-button-change` event with `pressed` and
   `value`, dispatched from the button.
 - `onToggleButtonChange(handler, capture?)`: typed listener mixin for `ToggleButtonChangeEvent`.
@@ -72,6 +72,10 @@ Listen for changes on the button or any ancestor:
   activation.
 - Other hosts get `role="button"`, `tabIndex=0` (removed when disabled), `aria-disabled`, and
   keyboard activation.
+- Inside `<toggleButtonGroup.Context>` the pressed state comes from the group (by `value`):
+  `pressed` / `defaultPressed` are ignored, the group's `disabled` applies, and the buttons share
+  one tab stop (`tabIndex` `0` / `-1`) moved with the arrow keys. See
+  [`stems-ui/toggle-button-group`](../toggle-button-group/README.md).
 - A toggle button doesn't submit a value with a form. Use `stems-ui/switch` for a form field.
 - Explicit host props win (`attrs()` semantics), for example `type="submit"`.
 

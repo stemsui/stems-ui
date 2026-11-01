@@ -1,5 +1,7 @@
-import { attrs, createMixin, on } from '@remix-run/component'
+import { attrs, createMixin, on, ref } from '@remix-run/component'
 import type { Dispatched, ElementProps, MixinFactory } from '@remix-run/component'
+
+import { getToggleButtonGroup, type ToggleButtonGroupItem } from './toggle-button-group.ts'
 
 const TOGGLE_BUTTON_CHANGE_EVENT = 'stems:toggle-button-change' as const
 
@@ -33,10 +35,10 @@ type ToggleButtonChangeHandler<target extends HTMLElement> = (
 
 /** Options for `toggleButton()`. They match Base UI's `Toggle` props. */
 export interface ToggleButtonOptions {
-  /** Whether the button is pressed. Controlled when not `undefined`. */
+  /** Whether the button is pressed. Controlled when not `undefined`. Ignored inside a group. */
   pressed?: boolean
   /**
-   * Whether the button is initially pressed (uncontrolled).
+   * Whether the button is initially pressed (uncontrolled). Ignored inside a group.
    * @default false
    */
   defaultPressed?: boolean
@@ -47,7 +49,10 @@ export interface ToggleButtonOptions {
    * @default false
    */
   disabled?: boolean
-  /** Identifies the button inside a future toggle button group. Included in change events. */
+  /**
+   * Identifies the button inside a `<toggleButtonGroup.Context>`, whose value lists the pressed
+   * buttons. Included in change events.
+   */
   value?: string
 }
 
@@ -59,28 +64,54 @@ const toggleButtonMixin: MixinFactory<HTMLElement, [options: ToggleButtonOptions
   createMixin<HTMLElement, [options: ToggleButtonOptions], ElementProps>((handle, hostType) => {
     let isButton = hostType === 'button'
     let uncontrolledPressed: boolean | undefined
+    let group = getToggleButtonGroup(handle)
+    let node: HTMLElement | undefined
+    let entry: ToggleButtonGroupItem = { disabled: false, getNode: () => node }
 
-    function getPressed(options: ToggleButtonOptions) {
+    if (group) {
+      let registeredGroup = group
+      registeredGroup._register(entry)
+      handle.signal.addEventListener('abort', () => registeredGroup._unregister(entry))
+    }
+
+    function getPressed(options: ToggleButtonOptions, groupValue: string) {
+      if (group) return group._isPressed(groupValue)
       if (options.pressed !== undefined) return options.pressed
       uncontrolledPressed ??= options.defaultPressed ?? false
       return uncontrolledPressed
     }
 
     return (options, props) => {
-      let pressed = getPressed(options)
+      // Inside a group, a button without `value` is still identified uniquely.
+      let groupValue = options.value ?? handle.id
+      let pressed = getPressed(options, groupValue)
       let disabled =
-        options.disabled === true || isTrue(props.disabled) || isTrue(props['aria-disabled'])
+        options.disabled === true ||
+        group?.disabled === true ||
+        isTrue(props.disabled) ||
+        isTrue(props['aria-disabled'])
+      entry.disabled = disabled
+      // Roving tabindex inside a group: one button is the tab stop.
+      let tabIndex = disabled
+        ? undefined
+        : group
+          ? group._isTabbable(entry)
+            ? 0
+            : -1
+          : isButton
+            ? undefined
+            : 0
 
       function setPressed(nextPressed: boolean, event: Event) {
-        if (options.pressed === undefined) {
+        let target = event.currentTarget as HTMLElement
+        if (!group && options.pressed === undefined) {
           uncontrolledPressed = nextPressed
           void handle.update()
         }
 
         options.onPressedChange?.(nextPressed, event)
-        ;(event.currentTarget as HTMLElement).dispatchEvent(
-          new ToggleButtonChangeEvent(nextPressed, options.value),
-        )
+        target.dispatchEvent(new ToggleButtonChangeEvent(nextPressed, options.value))
+        group?._setPressed(groupValue, nextPressed, event, target)
       }
 
       return [
@@ -92,10 +123,21 @@ const toggleButtonMixin: MixinFactory<HTMLElement, [options: ToggleButtonOptions
           'aria-pressed': pressed ? 'true' : 'false',
           'aria-disabled': !isButton && disabled ? 'true' : undefined,
           disabled: isButton && disabled ? true : undefined,
-          tabIndex: isButton || disabled ? undefined : 0,
+          tabIndex,
           'data-pressed': pressed ? '' : undefined,
           'data-disabled': disabled ? '' : undefined,
         }),
+        group &&
+          ref((host: HTMLElement, signal) => {
+            node = host
+            signal.addEventListener('abort', () => {
+              if (node === host) node = undefined
+            })
+          }),
+        group &&
+          on<HTMLElement, 'focus'>('focus', () => {
+            group?._setActive(entry)
+          }),
         on<HTMLElement, 'click'>('click', (event) => {
           if (disabled) {
             event.preventDefault()
@@ -103,17 +145,18 @@ const toggleButtonMixin: MixinFactory<HTMLElement, [options: ToggleButtonOptions
           }
           setPressed(!pressed, event)
         }),
-        !isButton &&
-          on<HTMLElement, 'keydown'>('keydown', (event) => {
-            if (event.target !== event.currentTarget) return
-            if (event.key === ' ') {
-              // Prevent page scroll; activation happens on keyup, like a native button.
-              event.preventDefault()
-            } else if (event.key === 'Enter') {
-              event.preventDefault()
-              event.currentTarget.click()
-            }
-          }),
+        on<HTMLElement, 'keydown'>('keydown', (event) => {
+          if (event.target !== event.currentTarget) return
+          if (group?._navigate(entry, event)) return
+          if (isButton) return
+          if (event.key === ' ') {
+            // Prevent page scroll; activation happens on keyup, like a native button.
+            event.preventDefault()
+          } else if (event.key === 'Enter') {
+            event.preventDefault()
+            event.currentTarget.click()
+          }
+        }),
         !isButton &&
           on<HTMLElement, 'keyup'>('keyup', (event) => {
             if (event.target !== event.currentTarget || event.key !== ' ') return
@@ -126,6 +169,8 @@ const toggleButtonMixin: MixinFactory<HTMLElement, [options: ToggleButtonOptions
 /**
  * Wires a two-state toggle button: `aria-pressed`, `data-pressed`, click and keyboard
  * activation. Prefer a `<button>` host; other hosts get `role="button"` and keyboard support.
+ * Inside `<toggleButtonGroup.Context>`, the pressed state comes from the group (by `value`) and
+ * the buttons share one tab stop moved with the arrow keys.
  */
 export function toggleButton<node extends HTMLElement = HTMLElement>(
   options: ToggleButtonOptions = {},

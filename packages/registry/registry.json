@@ -327,6 +327,160 @@
           "type": "registry:ui"
         }
       ]
+    },
+    {
+      "name": "checkbox",
+      "type": "registry:ui",
+      "title": "Checkbox",
+      "description": "A control for toggling an option on or off. Behavior: stems-ui/checkbox.",
+      "dependencies": ["stems-ui"],
+      "registryDependencies": ["@stemsui/utils"],
+      "files": [
+        {
+          "path": "src/ui/checkbox.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "radio-group",
+      "type": "registry:ui",
+      "title": "Radio Group",
+      "description": "A set of options where only one can be selected. Behavior: stems-ui/radio-group, stems-ui/radio.",
+      "dependencies": ["stems-ui"],
+      "registryDependencies": ["@stemsui/utils"],
+      "files": [
+        {
+          "path": "src/ui/radio-group.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "toggle-button-group",
+      "type": "registry:ui",
+      "title": "Toggle Button Group",
+      "description": "A set of toggle buttons with shared state (shadcn's toggle-group). Behavior: stems-ui/toggle-button-group.",
+      "dependencies": ["stems-ui"],
+      "registryDependencies": ["@stemsui/utils", "@stemsui/toggle-button"],
+      "files": [
+        {
+          "path": "src/ui/toggle-button-group.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "select",
+      "type": "registry:ui",
+      "title": "Select",
+      "description": "A button that opens a list of options to pick one or more values. Behavior: stems-ui/select.",
+      "dependencies": ["stems-ui"],
+      "registryDependencies": ["@stemsui/utils"],
+      "files": [
+        {
+          "path": "src/ui/select.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "field",
+      "type": "registry:ui",
+      "title": "Field",
+      "description": "Field, FieldLabel, FieldDescription, FieldError, FieldGroup, FieldSet, FieldLegend, FieldSeparator, FieldContent, FieldTitle. Behavior: stems-ui/field, stems-ui/fieldset.",
+      "dependencies": ["stems-ui"],
+      "registryDependencies": ["@stemsui/utils", "@stemsui/label", "@stemsui/separator"],
+      "files": [
+        {
+          "path": "src/ui/field.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "form",
+      "type": "registry:ui",
+      "title": "Form",
+      "description": "A native form with field validation and server errors. Behavior: stems-ui/form.",
+      "dependencies": ["stems-ui"],
+      "registryDependencies": ["@stemsui/utils"],
+      "files": [
+        {
+          "path": "src/ui/form.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "slider",
+      "type": "registry:ui",
+      "title": "Slider",
+      "description": "Pick a value or a range by dragging thumbs along a track. Behavior: stems-ui/slider.",
+      "dependencies": ["stems-ui"],
+      "registryDependencies": ["@stemsui/utils"],
+      "files": [
+        {
+          "path": "src/ui/slider.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "number-field",
+      "type": "registry:ui",
+      "title": "Number Field",
+      "description": "A numeric input with stepper buttons, scrubbing, and locale formatting. Behavior: stems-ui/number-field.",
+      "dependencies": ["stems-ui"],
+      "registryDependencies": ["@stemsui/utils"],
+      "files": [
+        {
+          "path": "src/ui/number-field.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "otp-field",
+      "type": "registry:ui",
+      "title": "OTP Field",
+      "description": "A one-time code input made of single-character slots. Behavior: stems-ui/otp-field.",
+      "dependencies": ["stems-ui"],
+      "registryDependencies": ["@stemsui/utils"],
+      "files": [
+        {
+          "path": "src/ui/otp-field.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "combobox",
+      "type": "registry:ui",
+      "title": "Combobox",
+      "description": "An input with a filterable list of options; one value or several shown as chips. Behavior: stems-ui/combobox.",
+      "dependencies": ["stems-ui"],
+      "registryDependencies": ["@stemsui/utils", "@stemsui/button"],
+      "files": [
+        {
+          "path": "src/ui/combobox.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "autocomplete",
+      "type": "registry:ui",
+      "title": "Autocomplete",
+      "description": "A free-text input with suggestions and optional inline completion. Behavior: stems-ui/autocomplete.",
+      "dependencies": ["stems-ui"],
+      "registryDependencies": ["@stemsui/utils", "@stemsui/button"],
+      "files": [
+        {
+          "path": "src/ui/autocomplete.tsx",
+          "type": "registry:ui"
+        }
+      ]
     }
   ]
 }

@@ -62,7 +62,8 @@
       "progress": {
         "headless": "done",
         "styled": "done"
-      }
+      },
+      "openGaps": []
     },
     {
       "baseUi": "Collapsible",
@@ -101,7 +102,7 @@
         "headless": "done",
         "styled": "done"
       },
-      "openGaps": ["data-valid/data-invalid wait for Field (Phase 3)"]
+      "openGaps": []
     },
     {
       "baseUi": "Meter",
@@ -151,7 +152,8 @@
       "progress": {
         "headless": "done",
         "styled": "done"
-      }
+      },
+      "openGaps": []
     },
     {
       "baseUi": "Switch",
@@ -172,9 +174,7 @@
         "headless": "done",
         "styled": "done"
       },
-      "openGaps": [
-        "Field state attributes (data-valid/invalid/dirty/touched/filled/focused) wait for Field (Phase 3)"
-      ]
+      "openGaps": []
     },
     {
       "baseUi": "Tabs",
@@ -219,7 +219,8 @@
       "progress": {
         "headless": "done",
         "styled": "done"
-      }
+      },
+      "openGaps": []
     },
     {
       "baseUi": "Alert Dialog",
@@ -446,11 +447,12 @@
         "Can't wrap @remix-run/ui/combobox: blur clears non-matching free text (combobox.tsx:527-531)",
         "Needs pluggable filter, empty state, inline completion, free-text value"
       ],
-      "buildsOn": ["stems-ui/listbox", "stems-ui/popover", "stems-ui/anchor"],
+      "buildsOn": ["lib/listbox.ts", "stems-ui/popover", "stems-ui/anchor"],
       "progress": {
-        "headless": "todo",
-        "styled": "todo"
-      }
+        "headless": "done",
+        "styled": "done"
+      },
+      "openGaps": []
     },
     {
       "baseUi": "Checkbox",
@@ -466,9 +468,10 @@
       ],
       "buildsOn": [],
       "progress": {
-        "headless": "todo",
-        "styled": "todo"
-      }
+        "headless": "done",
+        "styled": "done"
+      },
+      "openGaps": ["Nested parent checkbox (parent that is also a child)"]
     },
     {
       "baseUi": "Checkbox Group",
@@ -481,9 +484,10 @@
       "gaps": ["value[]/allValues, parent checkbox coordination"],
       "buildsOn": ["stems-ui/checkbox"],
       "progress": {
-        "headless": "todo",
-        "styled": "todo"
-      }
+        "headless": "done",
+        "styled": "done"
+      },
+      "openGaps": []
     },
     {
       "baseUi": "Combobox",
@@ -508,15 +512,21 @@
       ],
       "buildsOn": ["stems-ui/combobox"],
       "progress": {
-        "headless": "todo",
-        "styled": "todo"
-      }
+        "headless": "done",
+        "styled": "done"
+      },
+      "openGaps": [
+        "virtualized, grid/Row, inline (list without popup), createItems(), filteredItems prop",
+        "actionsRef, inputRef, keepHighlight",
+        "`limit` only applies with `items`",
+        "chip() needs an explicit value"
+      ]
     },
     {
       "baseUi": "Combobox (multiple)",
       "stems": "combobox-multiple",
-      "stemsModule": "stems-ui/combobox-multiple",
-      "registryItem": "combobox-multiple",
+      "stemsModule": "stems-ui/combobox",
+      "registryItem": "combobox",
       "phase": 3,
       "remixReference": null,
       "remixReferenceQuality": "none",
@@ -525,11 +535,12 @@
         "Chips/Chip/ChipRemove, string[] value, hidden inputs per value",
         "Retire if upstream adds multiple to listbox/combobox"
       ],
-      "buildsOn": ["stems-ui/listbox", "stems-ui/popover", "stems-ui/anchor"],
+      "buildsOn": ["lib/listbox.ts", "stems-ui/popover", "stems-ui/anchor"],
       "progress": {
-        "headless": "todo",
-        "styled": "todo"
-      }
+        "headless": "done",
+        "styled": "done"
+      },
+      "openGaps": ["Covered by stems-ui/combobox `multiple` (chips)"]
     },
     {
       "baseUi": "Field",
@@ -544,9 +555,10 @@
       ],
       "buildsOn": [],
       "progress": {
-        "headless": "todo",
-        "styled": "todo"
-      }
+        "headless": "done",
+        "styled": "done"
+      },
+      "openGaps": []
     },
     {
       "baseUi": "Fieldset",
@@ -559,9 +571,10 @@
       "gaps": ["Native fieldset/legend + disabled propagation to Field"],
       "buildsOn": [],
       "progress": {
-        "headless": "todo",
-        "styled": "todo"
-      }
+        "headless": "done",
+        "styled": "done"
+      },
+      "openGaps": []
     },
     {
       "baseUi": "Form",
@@ -576,9 +589,10 @@
       ],
       "buildsOn": ["stems-ui/field"],
       "progress": {
-        "headless": "todo",
-        "styled": "todo"
-      }
+        "headless": "done",
+        "styled": "done"
+      },
+      "openGaps": []
     },
     {
       "baseUi": "Number Field",
@@ -591,9 +605,10 @@
       "gaps": ["Step/smallStep/largeStep, Intl format/parse, scrub area, wheel scrub"],
       "buildsOn": [],
       "progress": {
-        "headless": "todo",
-        "styled": "todo"
-      }
+        "headless": "done",
+        "styled": "done"
+      },
+      "openGaps": ["Pointer-lock scrubbing unverified on real hardware"]
     },
     {
       "baseUi": "OTP Field",
@@ -606,9 +621,13 @@
       "gaps": ["length, mask, paste distribution, validationType, autoSubmit"],
       "buildsOn": [],
       "progress": {
-        "headless": "todo",
-        "styled": "todo"
-      }
+        "headless": "done",
+        "styled": "done"
+      },
+      "openGaps": [
+        "No select-all across slots",
+        "Slots after the first are labelled via the group only"
+      ]
     },
     {
       "baseUi": "Radio Group",
@@ -621,9 +640,10 @@
       "gaps": ["Roving tabindex, arrows check, native radio form participation, Field integration"],
       "buildsOn": [],
       "progress": {
-        "headless": "todo",
-        "styled": "todo"
-      }
+        "headless": "done",
+        "styled": "done"
+      },
+      "openGaps": ["No loopFocus option (always wraps)"]
     },
     {
       "baseUi": "Select",
@@ -647,15 +667,21 @@
       ],
       "buildsOn": ["stems-ui/select", "stems-ui/popover"],
       "progress": {
-        "headless": "todo",
-        "styled": "todo"
-      }
+        "headless": "done",
+        "styled": "done"
+      },
+      "openGaps": [
+        "Press-drag-release selection, actionsRef/inputRef, trigger data-popup-side",
+        "collisionAvoidance/disableAnchorTracking",
+        "Server HTML shows the raw value unless `items`/`itemToStringLabel` is passed",
+        "Native <label> opens the popup (no nativeLabel option); use select.label()"
+      ]
     },
     {
       "baseUi": "Select (multiple)",
       "stems": "select-multiple",
-      "stemsModule": "stems-ui/select-multiple",
-      "registryItem": "select-multiple",
+      "stemsModule": "stems-ui/select",
+      "registryItem": "select",
       "phase": 3,
       "remixReference": null,
       "remixReferenceQuality": "none",
@@ -664,11 +690,12 @@
         "Plan: keep string[] in a Stems provider and override aria-selected on listbox.option hosts (attrs() defaults lose to host props)",
         "Retire if upstream adds multiple to listbox/select"
       ],
-      "buildsOn": ["stems-ui/listbox", "stems-ui/popover", "stems-ui/anchor"],
+      "buildsOn": ["lib/listbox.ts", "stems-ui/popover", "stems-ui/anchor"],
       "progress": {
-        "headless": "todo",
-        "styled": "todo"
-      }
+        "headless": "done",
+        "styled": "done"
+      },
+      "openGaps": ["Covered by stems-ui/select `multiple`"]
     },
     {
       "baseUi": "Slider",
@@ -683,9 +710,13 @@
       ],
       "buildsOn": [],
       "progress": {
-        "headless": "todo",
-        "styled": "todo"
-      }
+        "headless": "done",
+        "styled": "done"
+      },
+      "openGaps": [
+        "Thumbs are role=slider elements, not hidden range inputs (mixins can't add children): no 'input-change' reason, no <label for> on thumbs",
+        "Server HTML assumes LTR"
+      ]
     },
     {
       "baseUi": "Toggle Group",
@@ -698,9 +729,10 @@
       "gaps": ["multiple, orientation, loopFocus, roving tabindex"],
       "buildsOn": ["stems-ui/toggle-button"],
       "progress": {
-        "headless": "todo",
-        "styled": "todo"
-      }
+        "headless": "done",
+        "styled": "done"
+      },
+      "openGaps": []
     },
     {
       "baseUi": "Menubar",
@@ -718,7 +750,8 @@
       "progress": {
         "headless": "todo",
         "styled": "todo"
-      }
+      },
+      "openGaps": []
     },
     {
       "baseUi": "Navigation Menu",
@@ -735,7 +768,8 @@
       "progress": {
         "headless": "todo",
         "styled": "todo"
-      }
+      },
+      "openGaps": []
     },
     {
       "baseUi": "Scroll Area",
@@ -750,7 +784,8 @@
       "progress": {
         "headless": "todo",
         "styled": "todo"
-      }
+      },
+      "openGaps": []
     },
     {
       "baseUi": "Toolbar",
@@ -767,7 +802,8 @@
       "progress": {
         "headless": "todo",
         "styled": "todo"
-      }
+      },
+      "openGaps": []
     }
   ],
   "utilities": [

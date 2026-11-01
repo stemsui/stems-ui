@@ -3,6 +3,7 @@ import { describe, it } from 'remix/test'
 import type { Handle } from 'remix/component'
 import { render } from 'remix/component/test'
 
+import * as field from './field.ts'
 import { input, onInputChange } from './input.ts'
 
 function type(element: HTMLInputElement, value: string) {
@@ -181,5 +182,39 @@ describe('input', () => {
     node.dispatchEvent(new Event('input', { bubbles: true }))
     await act(() => owner!.update())
     assert.equal(node.value, 'typed')
+  })
+
+  it('takes its state, ids and validity from an enclosing field', async (t) => {
+    let { $, act, cleanup } = render(
+      <div>
+        <field.Context name="email" validationMode="onBlur">
+          <label mix={field.label()}>Email</label>
+          <input type="email" mix={input({ defaultValue: 'ada' })} />
+        </field.Context>
+        <button type="button">Other</button>
+      </div>,
+    )
+    t.after(cleanup)
+    let host = $('input') as HTMLInputElement
+    assert.equal(host.name, 'email')
+    assert.equal(($('label') as HTMLLabelElement).htmlFor, host.id)
+    assert.equal(host.getAttribute('data-filled'), '')
+
+    await act(() => host.focus())
+    assert.equal(host.getAttribute('data-focused'), '')
+    await act(() => ($('button') as HTMLButtonElement).focus())
+    assert.equal(host.getAttribute('data-touched'), '')
+    assert.equal(host.getAttribute('data-invalid'), '')
+    assert.equal(host.getAttribute('aria-invalid'), 'true')
+    assert.equal($('label')!.getAttribute('data-invalid'), '')
+
+    await act(() => type(host, 'ada@example.com'))
+    assert.equal(host.getAttribute('data-valid'), '')
+    assert.equal(host.getAttribute('data-dirty'), '')
+    assert.equal(host.hasAttribute('aria-invalid'), false)
+  })
+
+  it('is the same mixin as field.control()', () => {
+    assert.equal(field.control, input)
   })
 })

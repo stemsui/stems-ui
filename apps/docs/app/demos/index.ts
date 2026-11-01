@@ -37,6 +37,8 @@ import { AutocompleteDemo } from './public/autocomplete.tsx'
 export interface DemoEntry {
   title: string
   description: string
+  /** Registry item to install, when it differs from the page key. */
+  registryItem?: string
   /** Headless module(s) providing the behavior. */
   behavior: string[]
   /** A client-entry component rendering the demo. */
@@ -178,13 +180,14 @@ export const demos: Record<string, DemoEntry> = {
   fieldset: {
     title: 'Fieldset',
     description: 'Groups related form controls under a legend.',
-    behavior: ['stems-ui/fieldset'],
+    registryItem: 'field',
+    behavior: ['stems-ui/fieldset', 'stems-ui/field'],
     Demo: FieldsetDemo,
   },
   form: {
     title: 'Form',
     description: 'A native form with consolidated validation errors.',
-    behavior: ['stems-ui/form'],
+    behavior: ['stems-ui/form', 'stems-ui/field'],
     Demo: FormDemo,
   },
   checkbox: {
@@ -196,19 +199,20 @@ export const demos: Record<string, DemoEntry> = {
   'checkbox-group': {
     title: 'Checkbox Group',
     description: 'Shared state for a set of checkboxes.',
-    behavior: ['stems-ui/checkbox-group'],
+    registryItem: 'checkbox',
+    behavior: ['stems-ui/checkbox-group', 'stems-ui/checkbox'],
     Demo: CheckboxGroupDemo,
   },
   'radio-group': {
     title: 'Radio Group',
     description: 'A set of options where only one can be selected.',
-    behavior: ['stems-ui/radio-group'],
+    behavior: ['stems-ui/radio-group', 'stems-ui/radio'],
     Demo: RadioGroupDemo,
   },
   'toggle-button-group': {
     title: 'Toggle Button Group',
     description: 'A set of toggle buttons with shared state.',
-    behavior: ['stems-ui/toggle-button-group'],
+    behavior: ['stems-ui/toggle-button-group', 'stems-ui/toggle-button'],
     Demo: ToggleButtonGroupDemo,
   },
   'number-field': {
@@ -237,13 +241,14 @@ export const demos: Record<string, DemoEntry> = {
   },
   combobox: {
     title: 'Combobox',
-    description: 'An input with a filterable list of options to choose from.',
+    description:
+      'An input with a filterable list of options; single with groups, or multiple as chips.',
     behavior: ['stems-ui/combobox'],
     Demo: ComboboxDemo,
   },
   autocomplete: {
     title: 'Autocomplete',
-    description: 'A free-text input with suggestions.',
+    description: 'A free-text input with suggestions and inline completion.',
     behavior: ['stems-ui/autocomplete'],
     Demo: AutocompleteDemo,
   },

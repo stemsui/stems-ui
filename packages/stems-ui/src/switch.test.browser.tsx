@@ -6,6 +6,9 @@ import { describe, it } from 'remix/test'
 import { createRoot, on, type Handle } from 'remix/component'
 import { render } from 'remix/component/test'
 
+import * as field from './field.ts'
+import * as fieldset from './fieldset.ts'
+import * as form from './form.ts'
 import * as switch_ from './switch.ts'
 
 function getHiddenInput(container: Element) {
@@ -468,5 +471,196 @@ describe('switch', () => {
     root.flush()
 
     expect(String(errors[0])).toMatch(/switch_\.root\(\) must be rendered inside/)
+  })
+})
+
+function submit(formNode: Element) {
+  formNode.dispatchEvent(new SubmitEvent('submit', { bubbles: true, cancelable: true }))
+}
+
+describe('switch in a field', () => {
+  it('is labelled and described by the field and takes its name', async (t) => {
+    let { $, act, container, cleanup } = render(
+      <field.Context name="alerts">
+        <label mix={field.label()}>Alerts</label>
+        <switch_.Context name="ignored">
+          <span mix={switch_.root()}>
+            <span mix={switch_.thumb()} />
+          </span>
+        </switch_.Context>
+        <p mix={field.description()}>Email me</p>
+      </field.Context>,
+    )
+    t.after(cleanup)
+    await act(() => {})
+    let label = $('label') as HTMLLabelElement
+    let control = $('[role="switch"]') as HTMLElement
+    let input = getHiddenInput(container)
+    expect(label.htmlFor).toBe(input.id)
+    expect(input.name).toBe('alerts')
+    expect(control.getAttribute('aria-labelledby')).toBe(label.id)
+    expect(control.getAttribute('aria-describedby')).toBe($('p')!.id)
+
+    await act(() => label.click())
+    expect(control.getAttribute('aria-checked')).toBe('true')
+    expect(control.hasAttribute('data-dirty')).toBe(true)
+    expect(control.hasAttribute('data-filled')).toBe(true)
+    expect(($('span > span') as HTMLElement).hasAttribute('data-filled')).toBe(true)
+  })
+
+  it('labels a button root through aria-labelledby', async (t) => {
+    let { $, act, cleanup } = render(
+      <field.Context>
+        <label mix={field.label()}>Alerts</label>
+        <switch_.Context>
+          <button mix={switch_.root()} />
+        </switch_.Context>
+      </field.Context>,
+    )
+    t.after(cleanup)
+    await act(() => {})
+    expect($('button')!.getAttribute('aria-labelledby')).toBe($('label')!.id)
+  })
+
+  it('blocks an invalid submission, focuses the root and re-validates on change', async (t) => {
+    let submitted: form.FormValues[] = []
+    let { $, act, cleanup } = render(
+      <form.Context onFormSubmit={(values) => void submitted.push(values)}>
+        <form mix={form.root()}>
+          <field.Context name="terms">
+            <div id="root" mix={field.root()}>
+              <span id="label" mix={field.label()}>
+                Accept
+              </span>
+              <switch_.Context required>
+                <span mix={switch_.root()}>
+                  <span mix={switch_.thumb()} />
+                </span>
+              </switch_.Context>
+              <div id="error" mix={field.error({ match: 'valueMissing' })}>
+                Required
+              </div>
+            </div>
+          </field.Context>
+        </form>
+      </form.Context>,
+    )
+    t.after(cleanup)
+    await act(() => {})
+    let control = $('[role="switch"]') as HTMLElement
+    let thumb = $('[role="switch"] > span') as HTMLElement
+    expect(control.getAttribute('aria-labelledby')).toBe('label')
+
+    await act(() => submit($('form')!))
+    expect(submitted).toEqual([])
+    expect(document.activeElement).toBe(control)
+    expect(control.getAttribute('aria-invalid')).toBe('true')
+    expect(control.hasAttribute('data-invalid')).toBe(true)
+    expect(thumb.hasAttribute('data-invalid')).toBe(true)
+    expect(thumb.hasAttribute('aria-invalid')).toBe(false)
+    expect(control.getAttribute('aria-describedby')).toBe('error')
+    expect(($('#error') as HTMLElement).hidden).toBe(false)
+
+    await act(() => control.click())
+    expect(control.hasAttribute('data-valid')).toBe(true)
+    expect(control.hasAttribute('aria-invalid')).toBe(false)
+    await act(() => submit($('form')!))
+    expect(submitted).toEqual([{ terms: true }])
+  })
+
+  it('runs custom validation with the next checked state', async (t) => {
+    let seen: unknown[] = []
+    let { $, act, cleanup } = render(
+      <field.Context
+        validationMode="onChange"
+        validate={(value) => {
+          seen.push(value)
+          return value ? 'Must stay off' : null
+        }}
+      >
+        <switch_.Context checked={false}>
+          <span aria-label="Mode" mix={switch_.root()} />
+        </switch_.Context>
+      </field.Context>,
+    )
+    t.after(cleanup)
+    let control = $('[role="switch"]') as HTMLElement
+    await act(() => control.click())
+    expect(seen).toEqual([true])
+    expect(control.getAttribute('aria-invalid')).toBe('true')
+  })
+
+  it('shows server errors until the value changes', async (t) => {
+    let { $, act, cleanup } = render(
+      <form.Context errors={{ alerts: 'Not allowed' }}>
+        <form mix={form.root()}>
+          <field.Context name="alerts">
+            <switch_.Context>
+              <span aria-label="Alerts" mix={switch_.root()} />
+            </switch_.Context>
+            <div mix={field.error()}>
+              <field.Validity>{(state) => state.error}</field.Validity>
+            </div>
+          </field.Context>
+        </form>
+      </form.Context>,
+    )
+    t.after(cleanup)
+    await act(() => {})
+    let control = $('[role="switch"]') as HTMLElement
+    expect(control.getAttribute('aria-invalid')).toBe('true')
+    expect($('div')!.textContent).toBe('Not allowed')
+    await act(() => control.click())
+    expect(control.hasAttribute('aria-invalid')).toBe(false)
+    expect(control.hasAttribute('data-invalid')).toBe(false)
+  })
+
+  it('tracks focused and touched', async (t) => {
+    let { $, act, cleanup } = render(
+      <div>
+        <field.Context>
+          <switch_.Context>
+            <span aria-label="Alerts" mix={switch_.root()} />
+          </switch_.Context>
+        </field.Context>
+        <button>Other</button>
+      </div>,
+    )
+    t.after(cleanup)
+    let control = $('[role="switch"]') as HTMLElement
+    await act(() => control.focus())
+    expect(control.hasAttribute('data-focused')).toBe(true)
+    await act(() => ($('button') as HTMLElement).focus())
+    expect(control.hasAttribute('data-focused')).toBe(false)
+    expect(control.hasAttribute('data-touched')).toBe(true)
+  })
+
+  it('is disabled by the field or an enclosing fieldset', async (t) => {
+    let { $, $$, act, cleanup } = render(
+      <div>
+        <field.Context disabled>
+          <switch_.Context>
+            <span aria-label="A" mix={switch_.root()} />
+          </switch_.Context>
+        </field.Context>
+        <fieldset.Context disabled>
+          <switch_.Context>
+            <button aria-label="B" mix={switch_.root()} />
+          </switch_.Context>
+        </fieldset.Context>
+      </div>,
+    )
+    t.after(cleanup)
+    let [a, b] = [...$$('[role="switch"]')] as HTMLElement[]
+    let [inputA, inputB] = [...$$('input')] as HTMLInputElement[]
+    expect(a!.getAttribute('aria-disabled')).toBe('true')
+    expect(a!.hasAttribute('data-disabled')).toBe(true)
+    expect(a!.hasAttribute('tabindex')).toBe(false)
+    expect(inputA!.disabled).toBe(true)
+    expect((b as HTMLButtonElement).disabled).toBe(true)
+    expect(inputB!.disabled).toBe(true)
+    await act(() => a!.click())
+    expect(a!.getAttribute('aria-checked')).toBe('false')
+    expect($('[role="switch"]')).toBe(a!)
   })
 })

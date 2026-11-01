@@ -159,6 +159,20 @@ export interface PopupPositionOptions {
   inset?: boolean
   /** `anchor()`'s `relativeTo` selector (Stems extra, used by select). */
   relativeTo?: string
+  /**
+   * Stems extra (select's `alignItemWithTrigger`): overlap the anchor so the popup descendant
+   * matching `selector` sits over it, vertically centered, with its inline-start edge lined up
+   * with `textNode` (an element inside the anchor, e.g. the select value) or with the anchor's
+   * own edge. `side`, `align`, and the offsets are ignored, and `data-side` is `'none'`.
+   */
+  alignItem?: PopupAlignItem | null
+}
+
+export interface PopupAlignItem {
+  /** Selector for the popup descendant to place over the anchor. */
+  selector: string
+  /** Element inside the anchor whose inline-start edge the descendant lines up with. */
+  textNode?: HTMLElement | null
 }
 
 export type PopupAnchor = HTMLElement | AnchorPoint | null | undefined
@@ -240,8 +254,11 @@ export interface PopupStore {
   readonly popupNode: HTMLElement | null
   readonly arrowNode: HTMLElement | null
   readonly backdropNode: HTMLElement | null
-  /** The rendered side: the final (flipped) side while positioned, else the requested side. */
-  readonly side: PopupSide
+  /**
+   * The rendered side: the final (flipped) side while positioned, else the requested side.
+   * `'none'` while positioned with `alignItem`.
+   */
+  readonly side: PopupSide | 'none'
   readonly align: PopupAlign
   /** Hover-open timers and pointer tracking shared by the trigger and the popup. */
   readonly hover: PopupHover
@@ -276,9 +293,9 @@ export interface PopupStore {
   /** @internal */
   _setPopupId(id: string): boolean
   /** @internal */
-  _setRequestedPlacement(side: PopupSide, align: PopupAlign): void
+  _setRequestedPlacement(side: PopupSide | 'none', align: PopupAlign): void
   /** @internal */
-  _setPlacement(side: PopupSide, align: PopupAlign): void
+  _setPlacement(side: PopupSide | 'none', align: PopupAlign): void
   /** @internal */
   _clearPlacement(): void
   /** @internal */
@@ -299,8 +316,11 @@ export function createPopupStore(options: PopupStoreOptions): PopupStore {
   let backdrop: BackdropEntry | null = null
   let popupId = `${id}-popup`
   let labels: Record<'title' | 'description', string[]> = { title: [], description: [] }
-  let requested: { side: PopupSide; align: PopupAlign } = { side: 'bottom', align: 'center' }
-  let placed: { side: PopupSide; align: PopupAlign } | null = null
+  let requested: { side: PopupSide | 'none'; align: PopupAlign } = {
+    side: 'bottom',
+    align: 'center',
+  }
+  let placed: { side: PopupSide | 'none'; align: PopupAlign } | null = null
   let interactionType: PopupInteractionType | null = null
 
   function isOpen() {
@@ -876,6 +896,8 @@ export function createPopupSurface(
       options.arrowPadding,
       options.inset,
       options.relativeTo,
+      options.alignItem?.selector,
+      options.alignItem?.textNode,
     ]
   }
 
@@ -918,6 +940,30 @@ export function createPopupSurface(
     let alignSign = getAlignOffsetSign(align, vertical, dir)
     let alignOffset = (floating: HTMLElement) => alignSign * resolve(options.alignOffset, floating)
 
+    let alignItem = options.alignItem
+    if (alignItem && anchorTarget instanceof HTMLElement) {
+      // Overlap the anchor: an inset placement on the inline-start side, aligned against the
+      // matching descendant, shifted so it lines up with the text inside the anchor.
+      let anchorNode = anchorTarget
+      let textNode = alignItem.textNode
+      let rtl = dir === 'rtl'
+      lastSideOffset = 0
+      stopAnchor = anchor(node, anchorNode, {
+        placement: rtl ? 'right' : 'left',
+        inset: true,
+        relativeTo: alignItem.selector,
+        offsetX: () => {
+          if (!textNode?.isConnected || !anchorNode.contains(textNode)) return 0
+          let anchorRect = anchorNode.getBoundingClientRect()
+          let textRect = textNode.getBoundingClientRect()
+          return rtl ? textRect.right - anchorRect.right : textRect.left - anchorRect.left
+        },
+        collisionPadding: options.collisionPadding ?? 5,
+        onPosition: (position) => applyPosition(node, position, 'none', 'center', dir),
+      })
+      return
+    }
+
     stopAnchor = anchor(node, anchorTarget, {
       placement: toPlacement(physicalSide, align, vertical, dir),
       offset: (floating) => (lastSideOffset = resolve(options.sideOffset, floating)),
@@ -933,11 +979,11 @@ export function createPopupSurface(
   function applyPosition(
     node: HTMLElement,
     position: AnchorPosition,
-    side: PopupSide,
+    side: PopupSide | 'none',
     align: PopupAlign,
     dir: TextDirection,
   ) {
-    let finalSide: PopupSide = position.side
+    let finalSide: PopupSide | 'none' = side === 'none' ? 'none' : position.side
     if (side === 'inline-start' || side === 'inline-end') {
       let start = dir === 'rtl' ? 'right' : 'left'
       finalSide = position.side === start ? 'inline-start' : 'inline-end'
@@ -1114,7 +1160,7 @@ export function createPopupSurface(
 
       let side = options.side ?? 'bottom'
       let align = options.align ?? 'center'
-      store._setRequestedPlacement(side, align)
+      store._setRequestedPlacement(options.alignItem ? 'none' : side, align)
 
       if (shown) {
         handle.queueTask((node) => {

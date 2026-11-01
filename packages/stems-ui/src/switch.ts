@@ -1,7 +1,7 @@
 // Adapted from @remix-run/ui 0.13.0 (packages/ui/src/toggle.ts).
 // https://github.com/remix-run/remix - Copyright (c) 2025 Shopify Inc. MIT License.
 
-import { attrs, createElement, createMixin, on, ref } from '@remix-run/component'
+import { attrs, createMixin, on, ref } from '@remix-run/component'
 import type {
   Dispatched,
   ElementProps,
@@ -10,6 +10,19 @@ import type {
   MixinHandle,
   RemixNode,
 } from '@remix-run/component'
+
+import {
+  activationKeys,
+  createFieldChange,
+  checkableFieldAttrs,
+  checkableLabelledBy,
+  NO_FIELD,
+  renderHiddenInput,
+  renderUncheckedValueInput,
+  resolveLabelId,
+  type CheckableField,
+} from './lib/checkable.ts'
+import { connectFieldControl } from './lib/field-control.ts'
 
 const SWITCH_CHANGE_EVENT = 'stems:switch-change' as const
 
@@ -51,7 +64,8 @@ export interface SwitchContextProps {
   /** Called with the next checked state and the DOM event that caused the change. */
   onCheckedChange?: (checked: boolean, event: Event) => void
   /**
-   * Whether the switch ignores user interaction. Also disables the hidden input.
+   * Whether the switch ignores user interaction. Also disables the hidden input. An enclosing
+   * `<field.Context disabled>` or `<fieldset.Context disabled>` also disables it.
    * @default false
    */
   disabled?: boolean
@@ -65,7 +79,7 @@ export interface SwitchContextProps {
    * @default false
    */
   required?: boolean
-  /** Identifies the field when a form is submitted. */
+  /** Identifies the field when a form is submitted. An enclosing `field.Context`'s `name` wins. */
   name?: string
   /** Value submitted when the switch is on. Defaults to `"on"`, like a native checkbox. */
   value?: string
@@ -75,7 +89,8 @@ export interface SwitchContextProps {
   form?: string
   /**
    * The id of the hidden input, for `<label for>` association with a non-`<button>` root.
-   * With a `<button>` root, put `id` on the button instead.
+   * With a `<button>` root, put `id` on the button instead. Inside a `field.Context`, the
+   * hidden input gets the field's control id unless this is set.
    */
   id?: string
   /** Receives the hidden `<input type="checkbox">` and a signal aborted when it is removed. */
@@ -92,32 +107,32 @@ export interface SwitchContextValue {
 
 interface SwitchInternals {
   readonly labelId: string | undefined
+  /** The enclosing field's wiring for the root and thumb. */
+  readonly field: CheckableField
   setRoot(node: HTMLElement | undefined): void
   toggle(event: Event): void
+  focus(): void
+  blur(): void
 }
 
 const internalsByContext = new WeakMap<SwitchContextValue, SwitchInternals>()
-
-// Mirrors Base UI's visually hidden input: still focusable by the browser for validation, but
-// invisible and removed from the accessibility tree.
-const hiddenInputStyle = {
-  position: 'absolute',
-  width: '1px',
-  height: '1px',
-  margin: '-1px',
-  padding: '0',
-  border: '0',
-  overflow: 'hidden',
-  clip: 'rect(0 0 0 0)',
-  whiteSpace: 'nowrap',
-  pointerEvents: 'none',
-} as const
 
 function SwitchProvider(handle: Handle<SwitchContextProps, SwitchContextValue>): () => RemixNode {
   let uncontrolledChecked = handle.props.defaultChecked ?? false
   let root: HTMLElement | undefined
   let input: HTMLInputElement | undefined
   let labelId: string | undefined
+  // Inside a <field.Context>, the field owns the id, name, disabled state and validation; the
+  // hidden checkbox is its validity element and the root is focused when it is invalid.
+  let fieldChange = createFieldChange<boolean>()
+  let fieldControl = connectFieldControl(handle, {
+    getValue: () => fieldChange.read(getChecked),
+    getValidityElement: () => input,
+    getFocusElement: () => root,
+    isFilled: (checked) => checked === true,
+  })
+  let fieldDisabled = false
+  let field: CheckableField = NO_FIELD
 
   function isControlled() {
     return handle.props.checked !== undefined
@@ -127,8 +142,12 @@ function SwitchProvider(handle: Handle<SwitchContextProps, SwitchContextValue>):
     return isControlled() ? handle.props.checked === true : uncontrolledChecked
   }
 
+  function isDisabled() {
+    return handle.props.disabled === true || fieldDisabled
+  }
+
   function isInert() {
-    return handle.props.disabled === true || handle.props.readOnly === true
+    return isDisabled() || handle.props.readOnly === true
   }
 
   function commit(nextChecked: boolean, event: Event) {
@@ -139,20 +158,14 @@ function SwitchProvider(handle: Handle<SwitchContextProps, SwitchContextValue>):
       void handle.update()
     }
 
+    fieldChange.report(fieldControl, nextChecked, event)
     handle.props.onCheckedChange?.(nextChecked, event)
     ;(root ?? input)?.dispatchEvent(new SwitchChangeEvent(nextChecked))
   }
 
-  // A non-button root is not labelable, so a wrapping `<label>` (or `<label for>` pointing at the
-  // hidden input) does not name it. Point `aria-labelledby` at that label instead.
+  // A non-button root is not labelable: point `aria-labelledby` at the hidden input's label.
   function syncLabel() {
-    if (!root || !input || root.localName === 'button') return
-    let label = input.labels?.[0]
-    let nextLabelId: string | undefined
-    if (label) {
-      if (!label.id) label.id = `${handle.id}-label`
-      nextLabelId = label.id
-    }
+    let nextLabelId = resolveLabelId(root, input, `${handle.id}-label`)
     if (nextLabelId !== labelId) {
       labelId = nextLabelId
       void handle.update()
@@ -164,7 +177,7 @@ function SwitchProvider(handle: Handle<SwitchContextProps, SwitchContextValue>):
       return getChecked()
     },
     get disabled() {
-      return handle.props.disabled === true
+      return isDisabled()
     },
     get readOnly() {
       return handle.props.readOnly === true
@@ -178,8 +191,17 @@ function SwitchProvider(handle: Handle<SwitchContextProps, SwitchContextValue>):
     get labelId() {
       return labelId
     },
+    get field() {
+      return field
+    },
     setRoot(node) {
       root = node
+    },
+    focus() {
+      fieldControl.focus()
+    },
+    blur() {
+      fieldControl.blur()
     },
     toggle(event) {
       if (isInert()) return
@@ -195,56 +217,53 @@ function SwitchProvider(handle: Handle<SwitchContextProps, SwitchContextValue>):
   handle.context.set(context)
 
   return () => {
-    let { children, disabled, form, id, name, required, uncheckedValue, value } = handle.props
+    let { children, form, required, uncheckedValue, value } = handle.props
     let checked = getChecked()
+    let f = fieldControl.render({
+      value: checked,
+      id: handle.props.id,
+      disabled: handle.props.disabled === true,
+      name: handle.props.name,
+    })
+    fieldDisabled = f.disabled
+    field = f.inField ? f : NO_FIELD
+    let disabled = isDisabled()
+    let name = f.name
 
     // Runs after this render commits, once the root and hidden input refs are bound.
     handle.queueTask(syncLabel)
 
     return [
       children,
-      createElement('input', {
+      renderHiddenInput({
         type: 'checkbox',
-        id,
+        id: f.id,
         name,
         value,
         form,
         checked,
-        disabled: disabled || undefined,
-        required: required || undefined,
-        'aria-hidden': 'true',
-        tabIndex: -1,
-        style: hiddenInputStyle,
-        mix: [
-          ref((node: HTMLInputElement, signal) => {
-            input = node
-            handle.props.inputRef?.(node, signal)
-            signal.addEventListener('abort', () => {
-              if (input === node) input = undefined
-            })
-          }),
-          on<HTMLInputElement, 'click'>('click', (event) => {
-            // Checkboxes ignore `readonly`; cancelling the click restores the checked state.
-            if (isInert()) event.preventDefault()
-          }),
-          on<HTMLInputElement, 'change'>('change', (event) => {
-            commit(event.currentTarget.checked, event)
-          }),
-          on<HTMLInputElement, 'focus'>('focus', () => {
-            // Browser validation (and some label clicks) focus the hidden input.
-            root?.focus()
-          }),
-        ],
-      }),
-      !checked && uncheckedValue !== undefined && name !== undefined
-        ? createElement('input', {
-            type: 'hidden',
-            name,
-            value: uncheckedValue,
-            form,
-            disabled: disabled || undefined,
+        disabled,
+        required: required === true,
+        isInert,
+        bindInput(node, signal) {
+          input = node
+          signal.addEventListener('abort', () => {
+            if (input === node) input = undefined
           })
-        : null,
+        },
+        inputRef: handle.props.inputRef,
+        onChange(event) {
+          commit(event.currentTarget.checked, event)
+        },
+        getFocusTarget: () => root,
+      }),
+      renderUncheckedValueInput({
+        checked,
+        name,
+        uncheckedValue,
+        form,
+        disabled,
+      }),
     ]
   }
 }
@@ -257,8 +276,9 @@ function getSwitchContext(handle: MixinHandle<HTMLElement, ElementProps>, part: 
   return context
 }
 
-function stateAttributes(context: SwitchContextValue) {
+function stateAttributes(context: SwitchContextValue, field: CheckableField, root: boolean) {
   return {
+    ...checkableFieldAttrs(field, { root }),
     'data-checked': context.checked ? '' : undefined,
     'data-unchecked': context.checked ? undefined : '',
     'data-disabled': context.disabled ? '' : undefined,
@@ -290,37 +310,29 @@ const rootMixin: MixinFactory<HTMLElement, [], ElementProps> = createMixin<
         'aria-disabled': !isButton && disabled ? 'true' : undefined,
         'aria-readonly': readOnly ? 'true' : undefined,
         'aria-required': required ? 'true' : undefined,
-        'aria-labelledby': isButton || hasName ? undefined : internals.labelId,
+        'aria-labelledby': checkableLabelledBy({
+          isButton,
+          hasName,
+          fieldLabelId: internals.field.labelId,
+          inputLabelId: internals.labelId,
+        }),
         disabled: isButton && disabled ? true : undefined,
         tabIndex: isButton || disabled ? undefined : 0,
-        ...stateAttributes(context),
+        ...stateAttributes(context, internals.field, true),
       }),
       ref((node: HTMLElement, signal) => {
         internals.setRoot(node)
         signal.addEventListener('abort', () => internals.setRoot(undefined))
       }),
+      on<HTMLElement, 'focus'>('focus', () => internals.focus()),
+      on<HTMLElement, 'blur'>('blur', () => internals.blur()),
       on<HTMLElement, 'click'>('click', (event) => {
         // Stops a wrapping <label> from also activating the hidden input, and a <button> root
         // from submitting its form.
         event.preventDefault()
         internals.toggle(event)
       }),
-      !isButton &&
-        on<HTMLElement, 'keydown'>('keydown', (event) => {
-          if (event.target !== event.currentTarget) return
-          if (event.key === ' ') {
-            // Prevent page scroll; activation happens on keyup, like a native button.
-            event.preventDefault()
-          } else if (event.key === 'Enter') {
-            event.preventDefault()
-            event.currentTarget.click()
-          }
-        }),
-      !isButton &&
-        on<HTMLElement, 'keyup'>('keyup', (event) => {
-          if (event.target !== event.currentTarget || event.key !== ' ') return
-          event.currentTarget.click()
-        }),
+      !isButton && activationKeys({ enter: true }),
     ]
   }
 })
@@ -331,12 +343,15 @@ const thumbMixin: MixinFactory<HTMLElement, [], ElementProps> = createMixin<
   ElementProps
 >((handle) => {
   let context = getSwitchContext(handle, 'thumb')
-  return () => attrs(stateAttributes(context))
+  let internals = internalsByContext.get(context)!
+  return () => attrs(stateAttributes(context, internals.field, false))
 })
 
 /**
  * Provider that owns the switch state and renders the hidden `<input type="checkbox">` used for
- * form participation, right after its children.
+ * form participation, right after its children. Inside a `<field.Context>` it is the field's
+ * control: the hidden input gets the field's control id and `name`, `required` validates
+ * through it, and the root gets the field's label, descriptions and state attributes.
  */
 export const Context = SwitchProvider
 

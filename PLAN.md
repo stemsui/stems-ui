@@ -267,13 +267,26 @@ Status: 20 of 39 components done; 512 tests. Open gaps per component are in `cov
 toasts). Escape routing for native `<dialog>` relies on Chromium honoring a cancelled Escape
 `keydown`; check Firefox and Safari before 1.0.
 
-### Phase 3: Forms and listboxes
+### Phase 3: Forms and listboxes ✅ (Nov 1, 2026)
 
-- Field, Fieldset, Form (validation + consolidated errors).
-- Checkbox, Checkbox Group, Radio Group, Toggle Button Group.
-- Number Field, Slider, OTP Field.
-- Listbox, Select, Combobox (controlled, `required`, custom filtering), multi-value
-  Select and Combobox, Autocomplete.
+- [x] Field, Fieldset, Form, with `lib/field-control.ts`: the contract every control uses to
+      join a Field (labelling, descriptions, validity state attributes, native +
+      custom validation, focus on invalid submit, server errors that clear on change). Forms
+      still submit natively without JS. `Field.Item` for per-item labels in groups.
+- [x] Checkbox (indeterminate, parent "select all"), Checkbox Group, Radio Group + Radio,
+      Toggle Button Group (`lib/checkable.ts` shared with Switch).
+- [x] Slider (range, push/swap collisions, edge alignment, pure-CSS positioning),
+      Number Field (locale parsing, hold-to-repeat, wheel, scrub), OTP Field (paste/autofill,
+      masking, auto-submit).
+- [x] `lib/listbox.ts` (roving or virtual focus), Select (single and multiple, item aligned
+      over the trigger), Combobox (filtering, empty state, chips for multiple), Autocomplete
+      (free text, inline completion), sharing `lib/combobox-core.ts`.
+- [x] Every control integrated with Field; verified end to end in a fresh `remix new` app
+      (field, form, select, combobox, checkbox, slider, input via `shadcn add`).
+
+Status: 34 of 39 Base UI components done (select-multiple and combobox-multiple are the
+`multiple` option); 936 tests. Remix bugs found are in `docs/upstream-issues.md` (notably: a
+child component's growing array output is inserted after the parent's later siblings).
 
 ### Phase 4: Composite and navigation
 
