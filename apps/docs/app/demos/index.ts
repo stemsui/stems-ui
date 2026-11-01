@@ -33,6 +33,10 @@ import { OtpFieldDemo } from './public/otp-field.tsx'
 import { SelectDemo } from './public/select.tsx'
 import { ComboboxDemo } from './public/combobox.tsx'
 import { AutocompleteDemo } from './public/autocomplete.tsx'
+import { MenubarDemo } from './public/menubar.tsx'
+import { NavigationMenuDemo } from './public/navigation-menu.tsx'
+import { ScrollAreaDemo } from './public/scroll-area.tsx'
+import { ToolbarDemo } from './public/toolbar.tsx'
 
 export interface DemoEntry {
   title: string
@@ -251,5 +255,29 @@ export const demos: Record<string, DemoEntry> = {
     description: 'A free-text input with suggestions and inline completion.',
     behavior: ['stems-ui/autocomplete'],
     Demo: AutocompleteDemo,
+  },
+  menubar: {
+    title: 'Menubar',
+    description: 'A horizontal bar of menus, like a desktop application menu.',
+    behavior: ['stems-ui/menubar'],
+    Demo: MenubarDemo,
+  },
+  'navigation-menu': {
+    title: 'Navigation Menu',
+    description: 'A collection of links and menus for website navigation.',
+    behavior: ['stems-ui/navigation-menu'],
+    Demo: NavigationMenuDemo,
+  },
+  'scroll-area': {
+    title: 'Scroll Area',
+    description: 'A native scroll container with custom scrollbars.',
+    behavior: ['stems-ui/scroll-area'],
+    Demo: ScrollAreaDemo,
+  },
+  toolbar: {
+    title: 'Toolbar',
+    description: 'A container for grouping a set of buttons and controls.',
+    behavior: ['stems-ui/toolbar'],
+    Demo: ToolbarDemo,
   },
 }
