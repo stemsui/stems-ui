@@ -1,0 +1,131 @@
+// Adapted from @remix-run/ui 0.13.0 (packages/ui/src/lib/wait-for-css-transition.test.ts).
+// https://github.com/remix-run/remix - Copyright (c) 2025 Shopify Inc. MIT License.
+
+import { expect } from 'remix/assert'
+import { afterEach, beforeEach, describe, it, mock } from 'remix/test'
+
+import { waitForCssTransition } from './wait-for-css-transition.ts'
+
+function createNode() {
+  let node = document.createElement('div')
+  document.body.append(node)
+
+  return node
+}
+
+let animationFrameCallbacks: FrameRequestCallback[] = []
+let rafSpy: ReturnType<typeof mock.method>
+let cafSpy: ReturnType<typeof mock.method>
+
+function flushAnimationFrame() {
+  let callbacks = animationFrameCallbacks
+  animationFrameCallbacks = []
+
+  for (let callback of callbacks) {
+    callback(performance.now())
+  }
+}
+
+beforeEach(() => {
+  animationFrameCallbacks = []
+
+  rafSpy = mock.method(globalThis, 'requestAnimationFrame', (callback) => {
+    animationFrameCallbacks.push(callback)
+    return animationFrameCallbacks.length
+  })
+
+  cafSpy = mock.method(globalThis, 'cancelAnimationFrame', () => {})
+})
+
+afterEach(() => {
+  document.body.textContent = ''
+  rafSpy.mock.restore!()
+  cafSpy.mock.restore!()
+})
+
+describe('waitForCssTransition', () => {
+  it('resolves after the detection window when no transition runs', async () => {
+    let node = createNode()
+    let resolved = false
+    let promise = waitForCssTransition(node, new AbortController().signal, () => {
+      node.dataset.state = 'open'
+    }).then(() => {
+      resolved = true
+    })
+
+    await Promise.resolve()
+
+    expect(resolved).toBe(false)
+
+    flushAnimationFrame()
+    await Promise.resolve()
+
+    expect(resolved).toBe(false)
+
+    flushAnimationFrame()
+    await promise
+
+    expect(resolved).toBe(true)
+  })
+
+  it('waits for transitionend after transitionrun is observed', async () => {
+    let node = createNode()
+    let resolved = false
+    let promise = waitForCssTransition(node, new AbortController().signal, () => {
+      node.dataset.state = 'open'
+    }).then(() => {
+      resolved = true
+    })
+
+    await Promise.resolve()
+    flushAnimationFrame()
+    node.dispatchEvent(new TransitionEvent('transitionrun', { propertyName: 'opacity' }))
+    flushAnimationFrame()
+    await Promise.resolve()
+
+    expect(resolved).toBe(false)
+    node.dispatchEvent(new TransitionEvent('transitionend', { propertyName: 'opacity' }))
+    await promise
+
+    expect(resolved).toBe(true)
+  })
+
+  it('ignores delayed transitions that start after the detection window', async () => {
+    let node = createNode()
+    let resolved = false
+    let promise = waitForCssTransition(node, new AbortController().signal, () => {
+      node.dataset.state = 'open'
+    }).then(() => {
+      resolved = true
+    })
+
+    flushAnimationFrame()
+    flushAnimationFrame()
+    await promise
+
+    expect(resolved).toBe(true)
+
+    node.dispatchEvent(new TransitionEvent('transitionrun', { propertyName: 'opacity' }))
+  })
+
+  it('resolves when the abort signal fires before transitionend', async () => {
+    let node = createNode()
+    let controller = new AbortController()
+    let resolved = false
+    let promise = waitForCssTransition(node, controller.signal, () => {
+      node.dataset.state = 'open'
+    }).then(() => {
+      resolved = true
+    })
+
+    await Promise.resolve()
+    flushAnimationFrame()
+
+    expect(resolved).toBe(false)
+
+    controller.abort()
+    await promise
+
+    expect(resolved).toBe(true)
+  })
+})

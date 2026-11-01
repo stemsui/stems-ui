@@ -8,7 +8,7 @@ import { routes } from './routes.ts'
 describe('dropdown menu demo', () => {
   it('opens, navigates by keyboard, and selects an item', async (t) => {
     let page = await t.serve(await createTestServer(router.fetch))
-    await page.goto(routes.home.href())
+    await page.goto(routes.component.href({ name: 'dropdown-menu' }))
 
     let trigger = page.getByRole('button', { name: 'Open menu' })
     await trigger.waitFor()
@@ -48,7 +48,7 @@ describe('dropdown menu demo', () => {
 
   it('toggles a checkbox item', async (t) => {
     let page = await t.serve(await createTestServer(router.fetch))
-    await page.goto(routes.home.href())
+    await page.goto(routes.component.href({ name: 'dropdown-menu' }))
     await page.waitForFunction(() =>
       document.querySelector('[data-slot="dropdown-menu-trigger"]')?.hasAttribute('aria-haspopup'),
     )

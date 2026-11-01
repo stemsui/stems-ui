@@ -19,39 +19,86 @@ Clashes with Remix win, and get documented:
 
 ## Headless modules (`packages/stems-ui`)
 
-- One subpath export per widget: `import * as dialog from 'stems-ui/dialog'`. Single-part widgets may
-  export a single mixin (`import { separator } from 'stems-ui/separator'`).
-- Shape (the same idioms `@remix-run/ui` uses):
-  - `Context`: provider component holding shared state (`<dialog.Context>`).
-  - Part mixins, applied to app-owned markup: `dialog.trigger()`, `dialog.popup()`.
-  - Bubbling events: an `Event` subclass plus an `on<Widget><Change>(handler)` mixin helper. Event type
-    strings are namespaced `stems:<widget>-<change>` (Remix uses `rmx:`).
-- State: support both controlled (`value` + `onValueChange`) and uncontrolled (`defaultValue`).
-- Props set via `attrs()` are **defaults**: explicit host props win. Don't override host props unless
-  correctness requires it (and document it).
-- Native first: `<dialog>`, the popover API, native inputs plus hidden inputs for forms, `inert`.
+### Module shape
+
+- One subpath export per widget, imported as a namespace: `import * as tabs from 'stems-ui/tabs'`.
+  Single-part widgets may export a single mixin (`import { separator } from 'stems-ui/separator'`).
+  `package.json` exports are pattern-based (`./*` → `dist/*.js`), so new modules need no export
+  edits. `src/lib/*` is internal and blocked from import.
+- Parts follow **Base UI's part names**, camelCased: Base UI `Tabs.Root`, `Tabs.List`, `Tabs.Tab`,
+  `Tabs.Indicator`, `Tabs.Panel` → `tabs.Context` (state) + mixins `tabs.root()`, `tabs.list()`,
+  `tabs.tab()`, `tabs.indicator()`, `tabs.panel()`.
+- `Context` is a provider component that owns shared state and receives the root options
+  (`<tabs.Context defaultValue="a" orientation="vertical">`). The root element's mixin is `root()`
+  when the widget has a root element. Widgets with per-item state use an extra provider named after
+  the part (`accordion.ItemContext`).
+- Use `createMixin` from `@remix-run/component`; return `attrs({...})` (and `on(...)`, `ref(...)`)
+  descriptors from the mixin's render function, as `@remix-run/ui` does.
+
+### Options and state
+
+- **Option names follow Base UI's prop names** for that part: `value` / `defaultValue` /
+  `onValueChange`, `checked` / `defaultChecked` / `onCheckedChange`, `open` / `defaultOpen` /
+  `onOpenChange`, `pressed` / `defaultPressed` / `onPressedChange`, `disabled`, `readOnly`,
+  `required`, `name`, `form`, `orientation`, `loopFocus`, `activateOnFocus`, etc. Defaults match
+  Base UI's defaults unless there's a documented reason.
+- Support controlled **and** uncontrolled state for every stateful value. Controlled when the
+  controlled option is not `undefined`.
+- Change callbacks receive the next value first: `onValueChange(value, event?)`. They also dispatch a
+  bubbling event (below), so consumers can listen either way.
+- Explicit host props win over mixin defaults (`attrs()` semantics). Don't override host props unless
+  correctness requires it, and document when you do.
+
+### Events
+
+- One `Event` subclass per change, `bubbles: true`, type string `stems:<widget>-<change>`
+  (e.g. `stems:tabs-change`), with the new state as readonly fields.
+- Export a typed listener helper: `onTabsChange(handler)` built on `on(...)`, as `@remix-run/ui`
+  does. Augment `HTMLElementEventMap` for the event type.
+
+### Styling hooks
+
+- **Data attributes follow Base UI's documented attributes for that part** (check the "Data
+  attributes" tables at `https://base-ui.com/react/components/<name>.md`), e.g. `data-checked` /
+  `data-unchecked`, `data-disabled`, `data-readonly`, `data-required`, `data-orientation`,
+  `data-active` / `data-selected`, `data-open` / `data-closed`, `data-panel-open`, `data-pressed`,
+  `data-highlighted`, `data-starting-style` / `data-ending-style`. This makes shadcn's Base UI styles
+  portable to Stems.
+- Boolean data attributes are **present (empty string) or absent**, never `"true"`/`"false"`.
+- CSS variables also follow Base UI (`--collapsible-panel-height`, `--active-tab-width`, ...).
+- State attributes must be correct in the **server-rendered** HTML, not only after hydration.
+
+### Platform
+
+- Native first: `<dialog>`, the popover API, native `<input>`s (or hidden inputs) for form
+  participation, `inert`, `hidden="until-found"`.
+- Keyboard handling that uses ArrowLeft/ArrowRight reads direction from `lib/direction.ts`
+  (`getDirection`, `horizontalArrowStep`) at event time, so RTL works via `dir="rtl"`.
+- Reuse internals in `src/lib/` (`keydown`, `typeahead`, `outside-click`, `scroll-lock`,
+  `hover-aim`, `wait-for-css-transition`, `direction`) and `src/anchor.ts`.
+
+### Dependencies and porting
+
 - Import from `@remix-run/component` (as `@remix-run/ui` does), never from `remix`.
 - Never import `@remix-run/ui`. Composite widgets build on Stems' own lower-level modules
   (tooltip on `stems-ui/popover`, select on `stems-ui/listbox`).
-- Porting from `@remix-run/ui` (MIT) is encouraged. A ported file starts with:
+- Porting from `@remix-run/ui` (MIT) is encouraged; their tagged source (with tests) is the
+  reference. A ported file starts with:
 
   ```ts
-  // Portions adapted from @remix-run/ui <version> (packages/ui/src/<file>),
-  // Copyright (c) Shopify Inc. Licensed under the MIT License.
+  // Adapted from @remix-run/ui 0.13.0 (packages/ui/src/<file>).
+  // https://github.com/remix-run/remix - Copyright (c) 2025 Shopify Inc. MIT License.
   ```
 
-  Then change the API freely to match Stems conventions and fix the gaps listed in
-  `coverage.json`.
+  Then change the API freely to match these conventions and fix the gaps listed in
+  `coverage.json`. Ported tests are renamed to `*.test.browser.ts(x)` and import from
+  `remix/assert` and `remix/test`.
 
-- Each module has `src/<module>/README.md` in the same format as `@remix-run/ui` READMEs: usage,
-  API list, behavior notes, styling hooks.
+### Documentation
 
-### Styling hooks (data attributes)
-
-Prefer Remix's existing attribute names. When a Base UI state has no Remix equivalent, use Base UI's
-name: `data-orientation`, `data-disabled`, `data-open` / `data-closed`, `data-checked` /
-`data-unchecked`, `data-pressed`, `data-highlighted`. Boolean data attributes are present-or-absent,
-except where Remix already uses `"true"`/`"false"` (see `docs/audit.md` §12).
+- Each module has `src/<module>/README.md`: one-line summary, Base UI equivalent link, usage,
+  API (Context props + each mixin's options), behavior notes (keyboard map, focus), and a
+  "Styling hooks" table (data attributes + CSS variables per part).
 
 ## Registry (`packages/registry`)
 

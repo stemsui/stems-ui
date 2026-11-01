@@ -1,9 +1,21 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "types": ["node", "remix/assets/types/hmr"],
+    "types": [
+      "node",
+      "remix/assets/types/hmr"
+    ],
     "jsxImportSource": "remix/component",
-    "noEmit": true
+    "noEmit": true,
+    "paths": {
+      "stems-ui/*": [
+        "../../packages/stems-ui/src/*.ts",
+        "../../packages/stems-ui/src/*.tsx"
+      ]
+    }
   },
-  "exclude": ["dist", "public"]
+  "exclude": [
+    "dist",
+    "public"
+  ]
 }

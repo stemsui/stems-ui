@@ -30,9 +30,10 @@
     "!src/**/*.test.browser.tsx"
   ],
   "exports": {
-    "./separator": {
-      "types": "./dist/separator.d.ts",
-      "default": "./dist/separator.js"
+    "./lib/*": null,
+    "./*": {
+      "types": "./dist/*.d.ts",
+      "default": "./dist/*.js"
     },
     "./package.json": "./package.json"
   },

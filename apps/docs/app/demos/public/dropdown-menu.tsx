@@ -12,7 +12,7 @@ import {
   onMenuSelect,
 } from '@stemsui/registry/ui/dropdown-menu.tsx'
 
-export const MenuDemo = clientEntry(import.meta.url, function MenuDemo(handle: Handle) {
+export const DropdownMenuDemo = clientEntry(import.meta.url, function DropdownMenuDemo(handle: Handle) {
   let lastAction = 'none'
   let showStatusBar = true
 
