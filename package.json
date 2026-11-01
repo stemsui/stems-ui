@@ -1,0 +1,29 @@
+{
+  "name": "stems-ui-monorepo",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "packageManager": "pnpm@12.16.1",
+  "engines": {
+    "node": ">=24.3.0"
+  },
+  "scripts": {
+    "build": "pnpm --filter \"./packages/**\" run build",
+    "dev": "pnpm build && pnpm --filter @stemsui/docs run dev",
+    "test": "pnpm build && pnpm --filter @stemsui/docs run css:build && remix test",
+    "typecheck": "pnpm -r run typecheck",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "changeset": "changeset",
+    "release": "pnpm build && changeset publish",
+    "test:browser": "remix test --type browser"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^3.0.3",
+    "@types/node": "^26.6.6",
+    "playwright": "^1.64.1",
+    "prettier": "^3.9.10",
+    "remix": "^3.1.0",
+    "typescript": "^7.0.2"
+  }
+}

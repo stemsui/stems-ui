@@ -1,0 +1,5 @@
+pnpm-lock.yaml
+dist/
+apps/docs/public/r/
+apps/docs/public/styles.css
+packages/registry/.build/

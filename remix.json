@@ -1,0 +1,11 @@
+{
+  "$schema": "./node_modules/remix/schema/remix.json",
+  // `remix test` serves browser-test harness files relative to the current working directory, and
+  // pnpm keeps the package store at the repo root, so tests always run from here.
+  "test": {
+    "exclude": ["**/node_modules/**", "**/dist/**"],
+    "playwright": {
+      "configFile": "./playwright.config.ts"
+    }
+  }
+}

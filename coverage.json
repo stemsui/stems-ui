@@ -1,0 +1,752 @@
+{
+  "$comment": "Stems owns every component. remixReference is the @remix-run/ui module to read/port from (MIT, attribute), with remixReferenceQuality good|partial|none; gaps lists what the Remix reference lacks versus Base UI (see docs/audit.md). progress.headless/styled: todo|done.",
+  "baseUiVersion": "1.9.0",
+  "remixUiReferenceVersion": "0.13.0",
+  "components": [
+    {
+      "baseUi": "Accordion",
+      "stems": "accordion",
+      "stemsModule": "stems-ui/accordion",
+      "registryItem": "accordion",
+      "phase": 1,
+      "remixReference": "@remix-run/ui/accordion",
+      "remixReferenceQuality": "good",
+      "gaps": [
+        "No orientation (ArrowUp/Down only, accordion.tsx:421-439)",
+        "No hiddenUntilFound",
+        "Closed panels get inert + aria-hidden but not hidden; theme CSS must hide them (accordion.tsx:450-454)",
+        "Panel has no role=region",
+        "No --accordion-panel-height/width CSS vars; animate with CSS interpolate-size or grid rows",
+        "No Item.onOpenChange; root onValueChange + AccordionChangeEvent only",
+        "State is data-state=open|closed rather than data-open/data-panel-open; no data-index/data-orientation",
+        "No data-starting-style/data-ending-style",
+        "Still moves focus with arrow keys (Base UI 1.9 removed this per APG); harmless difference"
+      ],
+      "buildsOn": [],
+      "progress": {
+        "headless": "todo",
+        "styled": "todo"
+      }
+    },
+    {
+      "baseUi": "Avatar",
+      "stems": "avatar",
+      "stemsModule": "stems-ui/avatar",
+      "registryItem": "avatar",
+      "phase": 1,
+      "remixReference": null,
+      "remixReferenceQuality": "none",
+      "gaps": ["Image loading status (data-loading/data-error), Fallback delay"],
+      "buildsOn": ["stems-ui/animation"],
+      "progress": {
+        "headless": "todo",
+        "styled": "todo"
+      }
+    },
+    {
+      "baseUi": "Button",
+      "stems": "button",
+      "stemsModule": "stems-ui/button",
+      "registryItem": "button",
+      "phase": 1,
+      "remixReference": null,
+      "remixReferenceQuality": "none",
+      "gaps": ["focusableWhenDisabled via aria-disabled + click guard; data-disabled"],
+      "buildsOn": [],
+      "progress": {
+        "headless": "todo",
+        "styled": "todo"
+      }
+    },
+    {
+      "baseUi": "Collapsible",
+      "stems": "collapsible",
+      "stemsModule": "stems-ui/collapsible",
+      "registryItem": "collapsible",
+      "phase": 1,
+      "remixReference": "@remix-run/ui/accordion",
+      "remixReferenceQuality": "partial",
+      "gaps": [
+        "Thin adapter: a one-item single accordion with collapsible=true; maps open/defaultOpen/onOpenChange to value",
+        "Inherits accordion gaps: no keepMounted/hiddenUntilFound, no panel size vars, data-state not data-open/data-panel-open"
+      ],
+      "buildsOn": ["stems-ui/accordion"],
+      "progress": {
+        "headless": "todo",
+        "styled": "todo"
+      }
+    },
+    {
+      "baseUi": "Input",
+      "stems": "input",
+      "stemsModule": "stems-ui/input",
+      "registryItem": "input",
+      "phase": 1,
+      "remixReference": null,
+      "remixReferenceQuality": "none",
+      "gaps": ["Field state attributes come in phase 3"],
+      "buildsOn": [],
+      "progress": {
+        "headless": "todo",
+        "styled": "todo"
+      }
+    },
+    {
+      "baseUi": "Meter",
+      "stems": "meter",
+      "stemsModule": "stems-ui/meter",
+      "registryItem": "meter",
+      "phase": 1,
+      "remixReference": null,
+      "remixReferenceQuality": "none",
+      "gaps": ["role=meter, aria-valuetext, Intl format"],
+      "buildsOn": [],
+      "progress": {
+        "headless": "todo",
+        "styled": "todo"
+      }
+    },
+    {
+      "baseUi": "Progress",
+      "stems": "progress",
+      "stemsModule": "stems-ui/progress",
+      "registryItem": "progress",
+      "phase": 1,
+      "remixReference": null,
+      "remixReferenceQuality": "none",
+      "gaps": ["role=progressbar, indeterminate, data-complete/indeterminate/progressing"],
+      "buildsOn": [],
+      "progress": {
+        "headless": "todo",
+        "styled": "todo"
+      }
+    },
+    {
+      "baseUi": "Separator",
+      "stems": "separator",
+      "stemsModule": "stems-ui/separator",
+      "registryItem": "separator",
+      "phase": 1,
+      "remixReference": null,
+      "remixReferenceQuality": "none",
+      "gaps": ["role=separator, aria-orientation, data-orientation"],
+      "buildsOn": [],
+      "progress": {
+        "headless": "done",
+        "styled": "done"
+      }
+    },
+    {
+      "baseUi": "Switch",
+      "stems": "switch",
+      "stemsModule": "stems-ui/switch",
+      "registryItem": "switch",
+      "phase": 1,
+      "remixReference": "@remix-run/ui/toggle",
+      "remixReferenceQuality": "good",
+      "gaps": [
+        "No Thumb part; use markup or a pseudo-element",
+        "Form participation only with the native input host; custom hosts don't submit (toggle.ts:125-126)",
+        "No uncheckedValue",
+        "data-state=checked|unchecked instead of data-checked/data-unchecked; no data-disabled/readonly/required or Field validity attributes"
+      ],
+      "buildsOn": [],
+      "progress": {
+        "headless": "todo",
+        "styled": "todo"
+      }
+    },
+    {
+      "baseUi": "Tabs",
+      "stems": "tabs",
+      "stemsModule": "stems-ui/tabs",
+      "registryItem": "tabs",
+      "phase": 1,
+      "remixReference": "@remix-run/ui/tabs",
+      "remixReferenceQuality": "partial",
+      "gaps": [
+        "No Indicator or --active-tab-* CSS vars [stems: measure [aria-selected=true] with a ResizeObserver]",
+        "Automatic activation only; Base UI defaults to manual (activateOnFocus=false) (tabs.ts:169-173) [upstream]",
+        "No orientation/aria-orientation; both arrow axes always active (tabs.ts:299-309) [upstream]",
+        "No RTL [upstream]",
+        "Panel has no tabIndex=0",
+        "Uncontrolled mode always picks the first enabled tab; no null value",
+        "data-state=active|inactive instead of data-active; no data-activation-direction/data-orientation/data-index"
+      ],
+      "buildsOn": ["stems-ui/tabs"],
+      "progress": {
+        "headless": "todo",
+        "styled": "todo"
+      }
+    },
+    {
+      "baseUi": "Toggle",
+      "stems": "toggle-button",
+      "stemsModule": "stems-ui/toggle-button",
+      "registryItem": "toggle-button",
+      "phase": 1,
+      "remixReference": null,
+      "remixReferenceQuality": "none",
+      "gaps": [
+        "aria-pressed button: pressed/defaultPressed/onPressedChange, data-pressed. Remix's toggle is a switch"
+      ],
+      "buildsOn": [],
+      "progress": {
+        "headless": "todo",
+        "styled": "todo"
+      }
+    },
+    {
+      "baseUi": "Alert Dialog",
+      "stems": "alert-dialog",
+      "stemsModule": "stems-ui/alert-dialog",
+      "registryItem": "alert-dialog",
+      "phase": 2,
+      "remixReference": null,
+      "remixReferenceQuality": "none",
+      "gaps": ["Built on stems dialog; role=alertdialog, no outside-click dismissal"],
+      "buildsOn": ["stems-ui/dialog"],
+      "progress": {
+        "headless": "todo",
+        "styled": "todo"
+      }
+    },
+    {
+      "baseUi": "Context Menu",
+      "stems": "context-menu",
+      "stemsModule": "stems-ui/context-menu",
+      "registryItem": "context-menu",
+      "phase": 2,
+      "remixReference": "@remix-run/ui/menu",
+      "remixReferenceQuality": "partial",
+      "gaps": [
+        "menu.contextTrigger() covers right-click at the pointer and ContextMenu/Shift+F10 (menu.tsx:876-901)",
+        "No long press on touch [stems]",
+        "No data-popup-open on the trigger region [stems alias]",
+        "Inherits all Menu gaps (closeOnClick, loopFocus, controlled open, groups, indicators, RTL)"
+      ],
+      "buildsOn": ["stems-ui/menu", "stems-ui/menu"],
+      "progress": {
+        "headless": "todo",
+        "styled": "todo"
+      }
+    },
+    {
+      "baseUi": "Dialog",
+      "stems": "dialog",
+      "stemsModule": "stems-ui/dialog",
+      "registryItem": "dialog",
+      "phase": 2,
+      "remixReference": null,
+      "remixReferenceQuality": "none",
+      "gaps": [
+        "Native <dialog>.showModal() for focus trap and inert background; modal true|false|'trap-focus'",
+        "Scroll lock needs a copy of the unexported lib/scroll-lock",
+        "Title/Description ids, nested dialogs, data-open/closed, initialFocus/finalFocus"
+      ],
+      "buildsOn": ["stems-ui/animation"],
+      "progress": {
+        "headless": "todo",
+        "styled": "todo"
+      }
+    },
+    {
+      "baseUi": "Drawer",
+      "stems": "drawer",
+      "stemsModule": "stems-ui/drawer",
+      "registryItem": "drawer",
+      "phase": 2,
+      "remixReference": null,
+      "remixReferenceQuality": "none",
+      "gaps": ["Swipe-to-dismiss, snap points, swipe CSS vars, nested drawers"],
+      "buildsOn": ["stems-ui/dialog", "stems-ui/animation"],
+      "progress": {
+        "headless": "todo",
+        "styled": "todo"
+      }
+    },
+    {
+      "baseUi": "Menu",
+      "stems": "menu",
+      "stemsModule": "stems-ui/menu",
+      "registryItem": "dropdown-menu",
+      "phase": 2,
+      "remixReference": "@remix-run/ui/menu",
+      "remixReferenceQuality": "partial",
+      "gaps": [
+        "Every activation closes the whole tree; no closeOnClick (menu.tsx:584) [upstream]",
+        "No loopFocus; navigation stops at the ends (menu.tsx:491-510) [upstream]",
+        "No open/defaultOpen/onOpenChange (menu.tsx:244) [upstream]",
+        "No openOnHover/delay on the root trigger; submenu delay fixed at 300ms (menu.tsx:21) [upstream]",
+        "Checkbox/radio checked is app-controlled; no RadioGroup value, no CheckboxItem state [stems wrapper via onMenuSelect]",
+        "No item indicators, Group/GroupLabel, Separator, LinkItem [stems wrapper]",
+        "No orientation; no RTL (ArrowRight/Left hardcoded, menu.tsx:1022-1035) [upstream]",
+        "No filterable menu (Menu.Input/Clear/Empty/FilterProvider, new in Base UI 1.9)",
+        "Scroll lock always on via popover; no outside-pointer blocking",
+        "No data-open/closed or trigger data-popup-open; data-highlighted is 'true'|absent"
+      ],
+      "buildsOn": ["stems-ui/menu"],
+      "progress": {
+        "headless": "todo",
+        "styled": "done (temporarily on @remix-run/ui/menu)"
+      }
+    },
+    {
+      "baseUi": "Popover",
+      "stems": "popover",
+      "stemsModule": "stems-ui/popover",
+      "registryItem": "popover",
+      "phase": 2,
+      "remixReference": "@remix-run/ui/popover",
+      "remixReferenceQuality": "partial",
+      "gaps": [
+        "Surface is controlled only (open + onHide); no defaultOpen/onOpenChange [stems wrapper]",
+        "anchor() sets no trigger ARIA: no aria-expanded/aria-haspopup/aria-controls (popover.ts:54-67) [stems wrapper; upstream request]",
+        "No role=dialog, Title/Description, Close part [stems wrapper]",
+        "Scroll lock always on; can't do modal=false on popover.surface (popover.ts:113) [upstream]",
+        "No openOnHover/delay/closeDelay",
+        "No Arrow, Backdrop, Viewport, multiple triggers/handle",
+        "Combined placement only; flips but doesn't shift; collisionPadding fixed at 16px (anchor.ts:67); no sticky; no RTL-logical align",
+        "No --anchor-width/--available-height/--transform-origin; sets inline max-width/max-height instead (anchor.ts:818-821)",
+        "data-anchor-placement instead of data-side/data-align; no data-open/closed (use :popover-open); no starting/ending-style (use @starting-style)"
+      ],
+      "buildsOn": ["stems-ui/popover", "stems-ui/anchor"],
+      "progress": {
+        "headless": "todo",
+        "styled": "todo"
+      }
+    },
+    {
+      "baseUi": "Preview Card",
+      "stems": "preview-card",
+      "stemsModule": "stems-ui/preview-card",
+      "registryItem": "preview-card",
+      "phase": 2,
+      "remixReference": null,
+      "remixReferenceQuality": "none",
+      "gaps": [
+        "Hover/focus open with delays; popover.surface scroll lock makes it unsuitable; needs hover-aim and outside-click (unexported lib)"
+      ],
+      "buildsOn": ["stems-ui/anchor"],
+      "progress": {
+        "headless": "todo",
+        "styled": "todo"
+      }
+    },
+    {
+      "baseUi": "Toast",
+      "stems": "toast",
+      "stemsModule": "stems-ui/toast",
+      "registryItem": "toast",
+      "phase": 2,
+      "remixReference": null,
+      "remixReferenceQuality": "none",
+      "gaps": [
+        "Toast manager, stacking/expanded state, swipe, timeouts, aria-live region, promise toasts"
+      ],
+      "buildsOn": ["stems-ui/animation", "stems-ui/anchor"],
+      "progress": {
+        "headless": "todo",
+        "styled": "todo"
+      }
+    },
+    {
+      "baseUi": "Tooltip",
+      "stems": "tooltip",
+      "stemsModule": "stems-ui/tooltip",
+      "registryItem": "tooltip",
+      "phase": 2,
+      "remixReference": null,
+      "remixReferenceQuality": "none",
+      "gaps": [
+        "Don't use popover.surface: it locks scroll and handles outside clicks; use anchor() + popover=hint/manual",
+        "Provider delay group, hoverable popup (hover-aim is unexported lib), trackCursorAxis, Arrow"
+      ],
+      "buildsOn": ["stems-ui/anchor"],
+      "progress": {
+        "headless": "todo",
+        "styled": "todo"
+      }
+    },
+    {
+      "baseUi": "Autocomplete",
+      "stems": "autocomplete",
+      "stemsModule": "stems-ui/autocomplete",
+      "registryItem": "autocomplete",
+      "phase": 3,
+      "remixReference": null,
+      "remixReferenceQuality": "none",
+      "gaps": [
+        "Can't wrap @remix-run/ui/combobox: blur clears non-matching free text (combobox.tsx:527-531)",
+        "Needs pluggable filter, empty state, inline completion, free-text value"
+      ],
+      "buildsOn": ["stems-ui/listbox", "stems-ui/popover", "stems-ui/anchor"],
+      "progress": {
+        "headless": "todo",
+        "styled": "todo"
+      }
+    },
+    {
+      "baseUi": "Checkbox",
+      "stems": "checkbox",
+      "stemsModule": "stems-ui/checkbox",
+      "registryItem": "checkbox",
+      "phase": 3,
+      "remixReference": null,
+      "remixReferenceQuality": "none",
+      "gaps": [
+        "Can't reuse @remix-run/ui/toggle: it hardcodes role=switch (toggle.ts:129)",
+        "Needs indeterminate, parent, uncheckedValue, Indicator, Field state attributes"
+      ],
+      "buildsOn": [],
+      "progress": {
+        "headless": "todo",
+        "styled": "todo"
+      }
+    },
+    {
+      "baseUi": "Checkbox Group",
+      "stems": "checkbox-group",
+      "stemsModule": "stems-ui/checkbox-group",
+      "registryItem": "checkbox-group",
+      "phase": 3,
+      "remixReference": null,
+      "remixReferenceQuality": "none",
+      "gaps": ["value[]/allValues, parent checkbox coordination"],
+      "buildsOn": ["stems-ui/checkbox"],
+      "progress": {
+        "headless": "todo",
+        "styled": "todo"
+      }
+    },
+    {
+      "baseUi": "Combobox",
+      "stems": "combobox",
+      "stemsModule": "stems-ui/combobox",
+      "registryItem": "combobox",
+      "phase": 3,
+      "remixReference": "@remix-run/ui/combobox",
+      "remixReferenceQuality": "partial",
+      "gaps": [
+        "Uncontrolled only: no value/onValueChange, no inputValue/onInputValueChange, no open/onOpenChange (ComboboxHandle ref gives open()/close()) [upstream]",
+        "Strict match: blur clears non-matching text (combobox.tsx:527-531) [upstream opt-out]",
+        "Filter hardcoded to case-insensitive startsWith (combobox.tsx:124-133) [upstream]",
+        "Popup closes when nothing matches, so no Empty part (combobox.tsx:429-431, 510-520) [upstream]",
+        "No Trigger/Clear/Icon/InputGroup parts [stems wrapper via ComboboxHandle]",
+        "No Group/GroupLabel/Separator/Status/ItemIndicator [stems wrapper]",
+        "No required/readOnly/form [upstream]",
+        "No autoHighlight, limit, virtualized, grid, inline",
+        "Quirk: initial input text is the defaultValue value string, not its label (combobox.tsx:690)",
+        "data-highlighted is 'true'|'false' (listbox.ts:333); selection is aria-selected, not data-selected",
+        "Multiple/chips is a separate entry: combobox-multiple"
+      ],
+      "buildsOn": ["stems-ui/combobox"],
+      "progress": {
+        "headless": "todo",
+        "styled": "todo"
+      }
+    },
+    {
+      "baseUi": "Combobox (multiple)",
+      "stems": "combobox-multiple",
+      "stemsModule": "stems-ui/combobox-multiple",
+      "registryItem": "combobox-multiple",
+      "phase": 3,
+      "remixReference": null,
+      "remixReferenceQuality": "none",
+      "gaps": [
+        "ListboxValue is string|null (listbox.ts:13); combobox state machine is single-value",
+        "Chips/Chip/ChipRemove, string[] value, hidden inputs per value",
+        "Retire if upstream adds multiple to listbox/combobox"
+      ],
+      "buildsOn": ["stems-ui/listbox", "stems-ui/popover", "stems-ui/anchor"],
+      "progress": {
+        "headless": "todo",
+        "styled": "todo"
+      }
+    },
+    {
+      "baseUi": "Field",
+      "stems": "field",
+      "stemsModule": "stems-ui/field",
+      "registryItem": "field",
+      "phase": 3,
+      "remixReference": null,
+      "remixReferenceQuality": "none",
+      "gaps": [
+        "Label/Control/Description/Error/Validity, validationMode, data-valid/invalid/dirty/touched/filled/focused"
+      ],
+      "buildsOn": [],
+      "progress": {
+        "headless": "todo",
+        "styled": "todo"
+      }
+    },
+    {
+      "baseUi": "Fieldset",
+      "stems": "fieldset",
+      "stemsModule": "stems-ui/fieldset",
+      "registryItem": "fieldset",
+      "phase": 3,
+      "remixReference": null,
+      "remixReferenceQuality": "none",
+      "gaps": ["Native fieldset/legend + disabled propagation to Field"],
+      "buildsOn": [],
+      "progress": {
+        "headless": "todo",
+        "styled": "todo"
+      }
+    },
+    {
+      "baseUi": "Form",
+      "stems": "form",
+      "stemsModule": "stems-ui/form",
+      "registryItem": "form",
+      "phase": 3,
+      "remixReference": null,
+      "remixReferenceQuality": "none",
+      "gaps": [
+        "errors, validationMode, onFormSubmit; Remix form navigation stays in charge of submission"
+      ],
+      "buildsOn": ["stems-ui/field"],
+      "progress": {
+        "headless": "todo",
+        "styled": "todo"
+      }
+    },
+    {
+      "baseUi": "Number Field",
+      "stems": "number-field",
+      "stemsModule": "stems-ui/number-field",
+      "registryItem": "number-field",
+      "phase": 3,
+      "remixReference": null,
+      "remixReferenceQuality": "none",
+      "gaps": ["Step/smallStep/largeStep, Intl format/parse, scrub area, wheel scrub"],
+      "buildsOn": [],
+      "progress": {
+        "headless": "todo",
+        "styled": "todo"
+      }
+    },
+    {
+      "baseUi": "OTP Field",
+      "stems": "otp-field",
+      "stemsModule": "stems-ui/otp-field",
+      "registryItem": "otp-field",
+      "phase": 3,
+      "remixReference": null,
+      "remixReferenceQuality": "none",
+      "gaps": ["length, mask, paste distribution, validationType, autoSubmit"],
+      "buildsOn": [],
+      "progress": {
+        "headless": "todo",
+        "styled": "todo"
+      }
+    },
+    {
+      "baseUi": "Radio Group",
+      "stems": "radio-group",
+      "stemsModule": "stems-ui/radio-group",
+      "registryItem": "radio-group",
+      "phase": 3,
+      "remixReference": null,
+      "remixReferenceQuality": "none",
+      "gaps": ["Roving tabindex, arrows check, native radio form participation, Field integration"],
+      "buildsOn": [],
+      "progress": {
+        "headless": "todo",
+        "styled": "todo"
+      }
+    },
+    {
+      "baseUi": "Select",
+      "stems": "select",
+      "stemsModule": "stems-ui/select",
+      "registryItem": "select",
+      "phase": 3,
+      "remixReference": "@remix-run/ui/select",
+      "remixReferenceQuality": "partial",
+      "gaps": [
+        "Uncontrolled only: no value/onValueChange, no open/onOpenChange; state machine is closed (select.tsx:65, 113-154) [upstream]",
+        "Single value only; multiple is a separate entry: select-multiple",
+        "No required/readOnly/form/autoComplete (select.tsx:56-63) [upstream; stems can add to the hidden input]",
+        "alignItemWithTrigger is always on and can't be changed (select.tsx:128-134)",
+        "No Group/GroupLabel/Separator/Label/ItemText/ItemIndicator/ScrollUp/DownArrow [stems wrapper]",
+        "Value placeholder via required defaultLabel; quirk: defaultValue still shows defaultLabel (select.tsx:341-346)",
+        "Strings only; no object items/isItemEqualToValue",
+        "Tab is swallowed while the list is open (listbox.ts:273-276)",
+        "Trigger aria-describedby points at the selected option (select.tsx:397)",
+        "data-highlighted is 'true'|'false'; aria-selected not data-selected; no trigger data-popup-open/data-placeholder"
+      ],
+      "buildsOn": ["stems-ui/select", "stems-ui/popover"],
+      "progress": {
+        "headless": "todo",
+        "styled": "todo"
+      }
+    },
+    {
+      "baseUi": "Select (multiple)",
+      "stems": "select-multiple",
+      "stemsModule": "stems-ui/select-multiple",
+      "registryItem": "select-multiple",
+      "phase": 3,
+      "remixReference": null,
+      "remixReferenceQuality": "none",
+      "gaps": [
+        "ListboxValue is string|null (listbox.ts:13); select state is single",
+        "Plan: keep string[] in a Stems provider and override aria-selected on listbox.option hosts (attrs() defaults lose to host props)",
+        "Retire if upstream adds multiple to listbox/select"
+      ],
+      "buildsOn": ["stems-ui/listbox", "stems-ui/popover", "stems-ui/anchor"],
+      "progress": {
+        "headless": "todo",
+        "styled": "todo"
+      }
+    },
+    {
+      "baseUi": "Slider",
+      "stems": "slider",
+      "stemsModule": "stems-ui/slider",
+      "registryItem": "slider",
+      "phase": 3,
+      "remixReference": null,
+      "remixReferenceQuality": "none",
+      "gaps": [
+        "Range/multiple thumbs, pointer capture, thumbAlignment, minStepsBetweenValues, onValueCommitted, orientation"
+      ],
+      "buildsOn": [],
+      "progress": {
+        "headless": "todo",
+        "styled": "todo"
+      }
+    },
+    {
+      "baseUi": "Toggle Group",
+      "stems": "toggle-button-group",
+      "stemsModule": "stems-ui/toggle-button-group",
+      "registryItem": "toggle-button-group",
+      "phase": 3,
+      "remixReference": null,
+      "remixReferenceQuality": "none",
+      "gaps": ["multiple, orientation, loopFocus, roving tabindex"],
+      "buildsOn": ["stems-ui/toggle-button"],
+      "progress": {
+        "headless": "todo",
+        "styled": "todo"
+      }
+    },
+    {
+      "baseUi": "Menubar",
+      "stems": "menubar",
+      "stemsModule": "stems-ui/menubar",
+      "registryItem": "menubar",
+      "phase": 4,
+      "remixReference": null,
+      "remixReferenceQuality": "none",
+      "gaps": [
+        "Roving focus across menu triggers, switching menus on hover while one is open, Left/Right between menus",
+        "Needs controllable menu open (upstream request) or reads menu.Context isOpen"
+      ],
+      "buildsOn": ["stems-ui/menu"],
+      "progress": {
+        "headless": "todo",
+        "styled": "todo"
+      }
+    },
+    {
+      "baseUi": "Navigation Menu",
+      "stems": "navigation-menu",
+      "stemsModule": "stems-ui/navigation-menu",
+      "registryItem": "navigation-menu",
+      "phase": 4,
+      "remixReference": null,
+      "remixReferenceQuality": "none",
+      "gaps": [
+        "Shared viewport with size vars, data-activation-direction, hover delays; hover-aim is unexported lib"
+      ],
+      "buildsOn": ["stems-ui/anchor", "stems-ui/popover"],
+      "progress": {
+        "headless": "todo",
+        "styled": "todo"
+      }
+    },
+    {
+      "baseUi": "Scroll Area",
+      "stems": "scroll-area",
+      "stemsModule": "stems-ui/scroll-area",
+      "registryItem": "scroll-area",
+      "phase": 4,
+      "remixReference": null,
+      "remixReferenceQuality": "none",
+      "gaps": ["Custom scrollbars/thumb, overflow edge data attributes and CSS vars"],
+      "buildsOn": [],
+      "progress": {
+        "headless": "todo",
+        "styled": "todo"
+      }
+    },
+    {
+      "baseUi": "Toolbar",
+      "stems": "toolbar",
+      "stemsModule": "stems-ui/toolbar",
+      "registryItem": "toolbar",
+      "phase": 4,
+      "remixReference": null,
+      "remixReferenceQuality": "none",
+      "gaps": [
+        "Roving tabindex across buttons/links/inputs/groups, focusableWhenDisabled, orientation"
+      ],
+      "buildsOn": [],
+      "progress": {
+        "headless": "todo",
+        "styled": "todo"
+      }
+    }
+  ],
+  "utilities": [
+    {
+      "baseUi": "Direction Provider",
+      "stems": "direction-provider",
+      "stemsModule": "stems-ui/direction-provider",
+      "gaps": [
+        "Remix has no direction concept; arrows and placements are physical (tabs.ts:299-309, menu.tsx:1022-1035, anchor.ts:1-13)",
+        "A Stems provider only affects Stems-built components until upstream reads dir"
+      ],
+      "buildsOn": [],
+      "phase": 5,
+      "notNeeded": false
+    },
+    {
+      "baseUi": "CSP Provider",
+      "stems": "csp-provider",
+      "stemsModule": "stems-ui/csp-provider",
+      "gaps": [
+        "Client css() uses adoptedStyleSheets, which inline-style CSP doesn't block (@remix-run/component style/stylesheet.ts:103-111)",
+        "SSR emits <style data-rmx-style> without a nonce (@remix-run/component server/stream.ts:1462); needs an upstream nonce option",
+        "A Stems provider can only nonce tags Stems emits itself"
+      ],
+      "buildsOn": [],
+      "phase": 5,
+      "notNeeded": false
+    },
+    {
+      "baseUi": "mergeProps",
+      "stems": "merge-props",
+      "stemsModule": null,
+      "gaps": ["Covered by mix arrays and attrs() defaults (host props win, attrs-mixin.ts:10-13)"],
+      "buildsOn": [],
+      "phase": null,
+      "notNeeded": true
+    },
+    {
+      "baseUi": "useRender",
+      "stems": "use-render",
+      "stemsModule": null,
+      "gaps": ["Covered by mixins on app-owned hosts; no render prop needed"],
+      "buildsOn": [],
+      "phase": null,
+      "notNeeded": true
+    }
+  ]
+}

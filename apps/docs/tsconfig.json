@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node", "remix/assets/types/hmr"],
+    "jsxImportSource": "remix/component",
+    "noEmit": true
+  },
+  "exclude": ["dist", "public"]
+}

@@ -1,0 +1,45 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry.json",
+  "name": "stemsui",
+  "homepage": "https://github.com/stemsui/stems-ui",
+  "items": [
+    {
+      "name": "theme",
+      "type": "registry:theme",
+      "title": "Stems UI theme",
+      "description": "shadcn/ui CSS variables (neutral). cssVars are generated from src/styles/theme.css at build time; keep `css` in sync with its @layer base block.",
+      "css": {
+        "@layer base": {
+          "*": { "@apply border-border outline-ring/50": {} },
+          "body": { "@apply bg-background text-foreground": {} }
+        }
+      }
+    },
+    {
+      "name": "utils",
+      "type": "registry:lib",
+      "title": "cn()",
+      "description": "Class name helper (clsx + tailwind-merge).",
+      "dependencies": ["clsx", "tailwind-merge"],
+      "files": [{ "path": "src/lib/utils.ts", "type": "registry:lib" }]
+    },
+    {
+      "name": "separator",
+      "type": "registry:ui",
+      "title": "Separator",
+      "description": "Visually or semantically separates content. Behavior: stems-ui/separator.",
+      "dependencies": ["stems-ui"],
+      "registryDependencies": ["@stemsui/utils"],
+      "files": [{ "path": "src/ui/separator.tsx", "type": "registry:ui" }]
+    },
+    {
+      "name": "dropdown-menu",
+      "type": "registry:ui",
+      "title": "Dropdown Menu",
+      "description": "A menu of actions triggered by a button. Behavior: @remix-run/ui/menu.",
+      "dependencies": ["@remix-run/ui", "stems-ui"],
+      "registryDependencies": ["@stemsui/utils"],
+      "files": [{ "path": "src/ui/dropdown-menu.tsx", "type": "registry:ui" }]
+    }
+  ]
+}

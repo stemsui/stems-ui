@@ -1,0 +1,34 @@
+{
+  "name": "@stemsui/docs",
+  "private": true,
+  "type": "module",
+  "imports": {
+    "#app/*": "./app/*"
+  },
+  "scripts": {
+    "dev": "pnpm run css:build && concurrently -k -n css,server \"pnpm run css:watch\" \"NODE_ENV=development node --watch --import remix/node-tsx server.ts\"",
+    "hmr": "pnpm run css:build && concurrently -k -n css,hmr \"pnpm run css:watch\" \"NODE_ENV=development node hmr.ts\"",
+    "start": "pnpm run css:build && NODE_ENV=production node --import remix/node-tsx server.ts",
+    "css:build": "tailwindcss -i ./app/styles/app.css -o ./public/styles.css",
+    "css:watch": "tailwindcss -i ./app/styles/app.css -o ./public/styles.css --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=24.3.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.3.3",
+    "@types/node": "^26.6.6",
+    "concurrently": "^10.0.6",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "@remix-run/ui": "0.13.0",
+    "@stemsui/registry": "workspace:*",
+    "clsx": "^2.1.1",
+    "remix": "^3.1.0",
+    "stems-ui": "workspace:*",
+    "tailwind-merge": "^3.7.0"
+  }
+}

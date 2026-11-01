@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "noEmit": true,
+    "jsxImportSource": "remix/component"
+  },
+  "include": ["src", "scripts"]
+}

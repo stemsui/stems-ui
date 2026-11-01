@@ -1,0 +1,13 @@
+node_modules/
+dist/
+.coverage/
+*.tsbuildinfo
+.DS_Store
+.env*
+
+# generated
+apps/docs/public/styles.css
+apps/docs/public/r/
+
+# registry build staging
+packages/registry/.build/
