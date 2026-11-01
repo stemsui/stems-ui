@@ -12,6 +12,14 @@ import { ProgressDemo } from './public/progress.tsx'
 import { SwitchDemo } from './public/switch.tsx'
 import { TabsDemo } from './public/tabs.tsx'
 import { ToggleButtonDemo } from './public/toggle-button.tsx'
+import { PopoverDemo } from './public/popover.tsx'
+import { DialogDemo } from './public/dialog.tsx'
+import { AlertDialogDemo } from './public/alert-dialog.tsx'
+import { DrawerDemo } from './public/drawer.tsx'
+import { ToastDemo } from './public/toast.tsx'
+import { ContextMenuDemo } from './public/context-menu.tsx'
+import { TooltipDemo } from './public/tooltip.tsx'
+import { PreviewCardDemo } from './public/preview-card.tsx'
 
 export interface DemoEntry {
   title: string
@@ -99,5 +107,53 @@ export const demos: Record<string, DemoEntry> = {
     description: 'An interactive component which expands/collapses a panel.',
     behavior: ['stems-ui/collapsible'],
     Demo: CollapsibleDemo,
+  },
+  popover: {
+    title: 'Popover',
+    description: 'An accessible popup anchored to a button.',
+    behavior: ['stems-ui/popover'],
+    Demo: PopoverDemo,
+  },
+  dialog: {
+    title: 'Dialog',
+    description: 'A popup that opens on top of the entire page.',
+    behavior: ['stems-ui/dialog'],
+    Demo: DialogDemo,
+  },
+  'alert-dialog': {
+    title: 'Alert Dialog',
+    description: 'A dialog that requires a user response to proceed.',
+    behavior: ['stems-ui/alert-dialog'],
+    Demo: AlertDialogDemo,
+  },
+  drawer: {
+    title: 'Drawer',
+    description: 'A panel that slides in from the edge of the screen, with swipe-to-dismiss.',
+    behavior: ['stems-ui/drawer'],
+    Demo: DrawerDemo,
+  },
+  toast: {
+    title: 'Toast',
+    description: 'Short, temporary notifications.',
+    behavior: ['stems-ui/toast'],
+    Demo: ToastDemo,
+  },
+  'context-menu': {
+    title: 'Context Menu',
+    description: 'A menu that appears at the pointer on right click or long press.',
+    behavior: ['stems-ui/menu'],
+    Demo: ContextMenuDemo,
+  },
+  tooltip: {
+    title: 'Tooltip',
+    description: 'A popup that shows a short hint when an element is hovered or focused.',
+    behavior: ['stems-ui/tooltip'],
+    Demo: TooltipDemo,
+  },
+  'preview-card': {
+    title: 'Preview Card',
+    description: 'A popup that previews a link destination on hover.',
+    behavior: ['stems-ui/preview-card'],
+    Demo: PreviewCardDemo,
   },
 }
