@@ -77,6 +77,31 @@ Clashes with Remix win, and get documented:
 - Reuse internals in `src/lib/` (`keydown`, `typeahead`, `outside-click`, `scroll-lock`,
   `hover-aim`, `wait-for-css-transition`, `direction`) and `src/anchor.ts`.
 
+### Popups and overlays (Phase 2+)
+
+- **Top layer, no portals.** Popups render where the app puts them and escape clipping and
+  z-index through the platform: `popover="manual"` + `showPopover()`/`hidePopover()` for
+  anchored popups (popover, menu, tooltip, preview card, select), native `<dialog>` with
+  `showModal()` (modal) or `show()` (non-modal) for dialogs. Base UI's `Portal` part has no
+  Stems equivalent; document that.
+- **Dismissal goes through `lib/dismiss-layer.ts`.** Register a layer when a popup opens,
+  unregister when it closes. Never add your own document-level Escape or outside-click
+  listeners: the stack makes nested popups (a popover in a dialog, a submenu in a menu) close in
+  the right order. Use `contains` to treat the trigger as inside. For native `<dialog>`,
+  `preventDefault()` its `cancel` event and let the stack decide.
+- **Mount/unmount transitions use `lib/presence.ts`** (`data-starting-style` /
+  `data-ending-style`, waits for CSS animations before hiding). Popup parts expose Base UI's
+  `data-open` / `data-closed` plus the presence attributes, and positioned parts expose
+  `data-side` / `data-align` and Base UI's CSS variables (`--anchor-width`,
+  `--anchor-height`, `--available-width`, `--available-height`, `--transform-origin`) where
+  `anchor.ts` can provide them.
+- **Positioning uses `src/anchor.ts`.** Options follow Base UI's Positioner props (`side`,
+  `align`, `sideOffset`, `alignOffset`, `collisionPadding`…) mapped onto `anchor()`; extend
+  `anchor.ts` if needed (it's ours now) and keep its tests passing.
+- **Focus:** `lib/tabbable.ts` (`getTabbableElements`, `focusFirst`). Restore focus to the
+  trigger on close unless the close was an outside press onto another focusable element.
+- **Scroll lock:** `lib/scroll-lock.ts`, only for modal popups (Base UI's `modal` option).
+
 ### Dependencies and porting
 
 - Import from `@remix-run/component` (as `@remix-run/ui` does), never from `remix`.
