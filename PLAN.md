@@ -245,12 +245,27 @@ Status: 11 of 39 components have headless + styled versions; 249 tests. Remainin
 differences from Base UI per component are in `coverage.json` (`openGaps`). Remix runtime
 pitfalls found along the way are in `CONVENTIONS.md`.
 
-### Phase 2: Popups and overlays
+### Phase 2: Popups and overlays ✅ (Nov 1, 2026)
 
-- Popover (modal and non-modal, trigger ARIA, controlled open state).
-- Menu (closeOnClick per item, loop focus, groups, link items, controlled open), Context
-  Menu.
-- Tooltip, Preview Card, Dialog, Alert Dialog, Drawer, Toast.
+- [x] Shared foundation: `lib/dismiss-layer.ts` (one Escape / outside-press stack per document,
+      so nested popups close in order), `lib/tabbable.ts`, `lib/popup.ts` (popup store, trigger,
+      top-layer surface with positioning, presence, dismissal, modal focus trap + scroll lock),
+      `lib/focus-trap.ts`, `lib/dialog-root.ts` (native `<dialog>` engine), `lib/swipe.ts`,
+      `lib/menu.tsx`, `lib/delay-group.ts`, `lib/toast-manager.ts`.
+- [x] Popover, Menu (submenus, checkbox/radio items, per-item `closeOnClick`, loop focus),
+      Context Menu (right click, long press, Shift+F10), Tooltip (delay groups), Preview Card,
+      Dialog (nested, modal / non-modal / trap-focus), Alert Dialog, Drawer (swipe to dismiss),
+      Toast (manager + Sonner-style `toast()` helper).
+- [x] The registry's dropdown-menu now uses `stems-ui/menu`; **no package depends on
+      `@remix-run/ui` any more**.
+- [x] Verified with real keyboard and pointer input in Chromium (each agent), a sweep of every
+      docs page for errors, and a fresh `remix new` app installing dropdown-menu, dialog,
+      toast and tooltip via `shadcn add`.
+
+Status: 20 of 39 components done; 512 tests. Open gaps per component are in `coverage.json`
+(notably: drawer snap points, detached triggers / `createHandle`, filterable menu, anchored
+toasts). Escape routing for native `<dialog>` relies on Chromium honoring a cancelled Escape
+`keydown`; check Firefox and Safari before 1.0.
 
 ### Phase 3: Forms and listboxes
 

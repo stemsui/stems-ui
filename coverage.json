@@ -232,9 +232,10 @@
       "gaps": ["Built on stems dialog; role=alertdialog, no outside-click dismissal"],
       "buildsOn": ["stems-ui/dialog"],
       "progress": {
-        "headless": "todo",
-        "styled": "todo"
-      }
+        "headless": "done",
+        "styled": "done"
+      },
+      "openGaps": ["Same as dialog"]
     },
     {
       "baseUi": "Context Menu",
@@ -252,9 +253,12 @@
       ],
       "buildsOn": ["stems-ui/menu", "stems-ui/menu"],
       "progress": {
-        "headless": "todo",
-        "styled": "todo"
-      }
+        "headless": "done",
+        "styled": "done"
+      },
+      "openGaps": [
+        "Right-click outside all trigger areas does not dismiss (dismiss layer handles left click only)"
+      ]
     },
     {
       "baseUi": "Dialog",
@@ -271,9 +275,15 @@
       ],
       "buildsOn": ["stems-ui/animation"],
       "progress": {
-        "headless": "todo",
-        "styled": "todo"
-      }
+        "headless": "done",
+        "styled": "done"
+      },
+      "openGaps": [
+        "Detached triggers (createHandle)",
+        "actionsRef.unmount / preventUnmountOnClose",
+        "defaultOpen modal dialogs appear only after hydration (showModal needs JS)",
+        "Exit wait ignores ::backdrop animations"
+      ]
     },
     {
       "baseUi": "Drawer",
@@ -286,9 +296,15 @@
       "gaps": ["Swipe-to-dismiss, snap points, swipe CSS vars, nested drawers"],
       "buildsOn": ["stems-ui/dialog", "stems-ui/animation"],
       "progress": {
-        "headless": "todo",
-        "styled": "todo"
-      }
+        "headless": "done",
+        "styled": "done"
+      },
+      "openGaps": [
+        "Snap points (incl. data-expanded)",
+        "SwipeArea (swipe to open)",
+        "--drawer-height",
+        "VirtualKeyboardProvider"
+      ]
     },
     {
       "baseUi": "Menu",
@@ -312,9 +328,17 @@
       ],
       "buildsOn": ["stems-ui/menu"],
       "progress": {
-        "headless": "todo",
-        "styled": "done (temporarily on @remix-run/ui/menu)"
-      }
+        "headless": "done",
+        "styled": "done"
+      },
+      "openGaps": [
+        "Filterable menu (FilterProvider/Input/Clear/Empty/List)",
+        "Viewport part",
+        "Detached triggers, payloads, actionsRef, triggerId",
+        "Open on pointer-down with press-drag-release",
+        "sibling-open / cancel-open reasons",
+        "Group aria-labelledby missing from server HTML"
+      ]
     },
     {
       "baseUi": "Popover",
@@ -337,9 +361,15 @@
       ],
       "buildsOn": ["stems-ui/popover", "stems-ui/anchor"],
       "progress": {
-        "headless": "todo",
-        "styled": "todo"
-      }
+        "headless": "done",
+        "styled": "done"
+      },
+      "openGaps": [
+        "Viewport part",
+        "Detached triggers (createHandle), payloads",
+        "Collision shift/sticky/collisionBoundary/positionMethod",
+        "--positioner-*/--popup-* variables, data-instant, data-anchor-hidden"
+      ]
     },
     {
       "baseUi": "Preview Card",
@@ -354,9 +384,10 @@
       ],
       "buildsOn": ["stems-ui/anchor"],
       "progress": {
-        "headless": "todo",
-        "styled": "todo"
-      }
+        "headless": "done",
+        "styled": "done"
+      },
+      "openGaps": ["Detached triggers, payloads", "Inline-rect anchoring for wrapped links"]
     },
     {
       "baseUi": "Toast",
@@ -371,9 +402,13 @@
       ],
       "buildsOn": ["stems-ui/animation", "stems-ui/anchor"],
       "progress": {
-        "headless": "todo",
-        "styled": "todo"
-      }
+        "headless": "done",
+        "styled": "done"
+      },
+      "openGaps": [
+        "Anchored toasts (Positioner, Arrow)",
+        "Sonner extras in the registry helper: richColors, toast.custom, onAutoClose, offset"
+      ]
     },
     {
       "baseUi": "Tooltip",
@@ -389,9 +424,15 @@
       ],
       "buildsOn": ["stems-ui/anchor"],
       "progress": {
-        "headless": "todo",
-        "styled": "todo"
-      }
+        "headless": "done",
+        "styled": "done"
+      },
+      "openGaps": [
+        "Detached triggers, payloads, triggerId",
+        "Viewport part, --positioner-*/--popup-* variables",
+        "data-anchor-hidden",
+        "Close when the active trigger unmounts"
+      ]
     },
     {
       "baseUi": "Autocomplete",

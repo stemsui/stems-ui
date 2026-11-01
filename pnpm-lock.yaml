@@ -187,9 +187,6 @@ importers:
 
   apps/docs:
     dependencies:
-      '@remix-run/ui':
-        specifier: 0.13.0
-        version: 0.13.0
       '@stemsui/registry':
         specifier: workspace:*
         version: link:../../packages/registry
@@ -230,9 +227,6 @@ importers:
 
   packages/registry:
     devDependencies:
-      '@remix-run/ui':
-        specifier: 0.13.0
-        version: 0.13.0
       '@types/node':
         specifier: ^26.6.6
         version: 26.6.6
@@ -1446,9 +1440,6 @@ packages:
     peerDependenciesMeta:
       playwright:
         optional: true
-
-  '@remix-run/ui@0.13.0':
-    resolution: {integrity: sha512-8N47y0CPtinGTnA6pbCoT51BJpRjkKqBkHd6MYBlhrtWCrX/bKe5VNktt4oyGF0vOecyvbgI6odkem83lt4Isg==}
 
   '@sec-ant/readable-stream@0.4.1':
     resolution: {integrity: sha512-831qok9r2t8AlxLko40y2ebgSDhenenCatLVeW/uBtnHPyhHOvG0C7TvfgecV+wHzIm5KUICgzmVpWS+IMEAeg==}
@@ -3882,10 +3873,6 @@ snapshots:
     transitivePeerDependencies:
       - '@emnapi/core'
       - '@emnapi/runtime'
-
-  '@remix-run/ui@0.13.0':
-    dependencies:
-      '@remix-run/component': 1.1.0
 
   '@sec-ant/readable-stream@0.4.1': {}
 

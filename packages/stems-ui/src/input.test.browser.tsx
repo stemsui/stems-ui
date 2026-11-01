@@ -162,4 +162,24 @@ describe('input', () => {
 
     assert.equal(($('input') as HTMLInputElement).value, 'host')
   })
+  it('keeps an uncontrolled default value when the owner re-renders', async (t) => {
+    let owner: Handle | undefined
+    function App(handle: Handle) {
+      owner = handle
+      return () => <input defaultValue="100%" mix={input()} />
+    }
+    let { $, act, cleanup } = render(<App />)
+    t.after(cleanup)
+
+    let node = $('input') as HTMLInputElement
+    assert.equal(node.value, '100%')
+
+    await act(() => owner!.update())
+    assert.equal(node.value, '100%')
+
+    node.value = 'typed'
+    node.dispatchEvent(new Event('input', { bubbles: true }))
+    await act(() => owner!.update())
+    assert.equal(node.value, 'typed')
+  })
 })

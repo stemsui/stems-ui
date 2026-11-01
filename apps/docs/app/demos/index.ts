@@ -38,7 +38,7 @@ export const demos: Record<string, DemoEntry> = {
   'dropdown-menu': {
     title: 'Dropdown Menu',
     description: 'A menu of actions or options, opened from a button.',
-    behavior: ['@remix-run/ui/menu (temporary)', 'stems-ui/separator'],
+    behavior: ['stems-ui/menu'],
     Demo: DropdownMenuDemo,
   },
   switch: {
@@ -141,7 +141,7 @@ export const demos: Record<string, DemoEntry> = {
   'context-menu': {
     title: 'Context Menu',
     description: 'A menu that appears at the pointer on right click or long press.',
-    behavior: ['stems-ui/menu'],
+    behavior: ['stems-ui/context-menu'],
     Demo: ContextMenuDemo,
   },
   tooltip: {

@@ -53,8 +53,8 @@
       "name": "dropdown-menu",
       "type": "registry:ui",
       "title": "Dropdown Menu",
-      "description": "A menu of actions triggered by a button. Behavior: @remix-run/ui/menu.",
-      "dependencies": ["@remix-run/ui", "stems-ui"],
+      "description": "A menu of actions triggered by a button, with checkbox and radio items and submenus. Behavior: stems-ui/menu.",
+      "dependencies": ["stems-ui"],
       "registryDependencies": ["@stemsui/utils"],
       "files": [
         {
@@ -212,6 +212,118 @@
       "files": [
         {
           "path": "src/ui/accordion.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "toast",
+      "type": "registry:ui",
+      "title": "Toast",
+      "description": "Short, temporary notifications (Sonner-style API). Behavior: stems-ui/toast.",
+      "dependencies": ["stems-ui"],
+      "registryDependencies": ["@stemsui/utils"],
+      "files": [
+        {
+          "path": "src/ui/toast.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "popover",
+      "type": "registry:ui",
+      "title": "Popover",
+      "description": "An accessible popup anchored to a button. Behavior: stems-ui/popover.",
+      "dependencies": ["stems-ui"],
+      "registryDependencies": ["@stemsui/utils"],
+      "files": [
+        {
+          "path": "src/ui/popover.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "dialog",
+      "type": "registry:ui",
+      "title": "Dialog",
+      "description": "A popup that opens on top of the entire page. Behavior: stems-ui/dialog.",
+      "dependencies": ["stems-ui"],
+      "registryDependencies": ["@stemsui/utils", "@stemsui/button"],
+      "files": [
+        {
+          "path": "src/ui/dialog.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "alert-dialog",
+      "type": "registry:ui",
+      "title": "Alert Dialog",
+      "description": "A dialog that requires a user response to proceed. Behavior: stems-ui/alert-dialog.",
+      "dependencies": ["stems-ui"],
+      "registryDependencies": ["@stemsui/utils", "@stemsui/button"],
+      "files": [
+        {
+          "path": "src/ui/alert-dialog.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "drawer",
+      "type": "registry:ui",
+      "title": "Drawer",
+      "description": "A panel that slides in from the edge of the screen, with swipe-to-dismiss. Behavior: stems-ui/drawer.",
+      "dependencies": ["stems-ui"],
+      "registryDependencies": ["@stemsui/utils"],
+      "files": [
+        {
+          "path": "src/ui/drawer.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "tooltip",
+      "type": "registry:ui",
+      "title": "Tooltip",
+      "description": "A popup that shows a short hint when an element is hovered or focused. Behavior: stems-ui/tooltip.",
+      "dependencies": ["stems-ui"],
+      "registryDependencies": ["@stemsui/utils"],
+      "files": [
+        {
+          "path": "src/ui/tooltip.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "preview-card",
+      "type": "registry:ui",
+      "title": "Preview Card",
+      "description": "A popup that previews a link's destination on hover or focus (shadcn's hover card). Behavior: stems-ui/preview-card.",
+      "dependencies": ["stems-ui"],
+      "registryDependencies": ["@stemsui/utils"],
+      "files": [
+        {
+          "path": "src/ui/preview-card.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "context-menu",
+      "type": "registry:ui",
+      "title": "Context Menu",
+      "description": "A menu opened by right click, long press, or Shift+F10 at the pointer. Behavior: stems-ui/context-menu.",
+      "dependencies": ["stems-ui"],
+      "registryDependencies": ["@stemsui/utils"],
+      "files": [
+        {
+          "path": "src/ui/context-menu.tsx",
           "type": "registry:ui"
         }
       ]

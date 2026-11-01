@@ -130,6 +130,13 @@ Clashes with Remix win, and get documented:
 - **Don't call a mixin's own `handle.update()`.** It can re-render the mixin with stale arguments
   after its owner re-rendered. Re-render through the Context provider's handle, or write DOM
   attributes directly.
+- **Never pass `value: undefined` (or `checked: undefined`) to `attrs()`.** `attrs()` copies keys
+  whose value is `undefined`, and an explicit `value: undefined` makes Remix clear the input,
+  wiping uncontrolled defaults. Add those keys only when they're defined.
+- **The JSX runtime drops symbol-keyed props.** Use string keys (e.g. `__stemsMenuKind`) for
+  internal props passed between Stems components.
+- **Item state that an indicator part needs lives in a provider** (`menu.CheckboxItemContext`,
+  `accordion.ItemContext`), because a mixin can't provide context to the element's children.
 - **Read `handle.signal` during setup or render only**, and capture it. Reading it later throws,
   and the scheduler swallows the error.
 - **A mixin can't remove its element.** Options like Base UI's `keepMounted` belong in the styled
@@ -158,7 +165,7 @@ Clashes with Remix win, and get documented:
   - spreads remaining host props, merges `class` with `cn()`, and appends the caller's `mix` after the
     behavior mixin: `mix={[menu.item(opts), mix]}`,
   - sets `data-slot="<item>-<part>"` like shadcn,
-  - styles state through ARIA and data attributes (`aria-expanded:`, `data-[highlighted=true]:`), not
+  - styles state through ARIA and data attributes (`aria-expanded:`, `data-highlighted:`), not
     JS-computed classes.
 - Visual target: shadcn/ui's Base UI style. Theme tokens are shadcn's CSS variables.
 

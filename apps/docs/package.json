@@ -26,7 +26,6 @@
     "typescript": "^7.0.2"
   },
   "dependencies": {
-    "@remix-run/ui": "0.13.0",
     "@stemsui/registry": "workspace:*",
     "clsx": "^2.1.1",
     "remix": "^3.1.0",

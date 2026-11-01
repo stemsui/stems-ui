@@ -1,6 +1,9 @@
 // Adapted from @remix-run/ui 0.13.0 (packages/ui/src/anchor.ts).
 // https://github.com/remix-run/remix - Copyright (c) 2025 Shopify Inc. MIT License.
 
+// Stems additions: `collisionPadding` and `onPosition` (used by stems-ui/popover for Base UI's
+// `data-side` / `data-align` and `--available-*` / `--anchor-*` / `--transform-origin` hooks).
+
 type ExtendedAnchorPlacement =
   | 'top'
   | 'top-start'
@@ -58,9 +61,70 @@ export type AnchorOptions = {
   offsetX?: AnchorOffsetValue
   /** Additional vertical offset in pixels, or a callback computing it (defaults to `0`). */
   offsetY?: AnchorOffsetValue
+  /**
+   * Space in pixels to keep between the floating element and the viewport edges when choosing a
+   * side and constraining the position (defaults to `16`). A number applies to every edge.
+   */
+  collisionPadding?: number | Partial<AnchorPadding>
+  /**
+   * Called after every position update (the initial one, and each scroll, resize, or geometry
+   * change) with the resolved placement and geometry.
+   */
+  onPosition?: (position: AnchorPosition) => void
 }
 
-const viewportPaddingPx = 16
+/** Every placement `anchor()` can resolve to: a side plus an optional physical edge alignment. */
+export type AnchorFullPlacement = ExtendedAnchorPlacement
+
+/** Per-edge padding in pixels. */
+export interface AnchorPadding {
+  top: number
+  right: number
+  bottom: number
+  left: number
+}
+
+/** Geometry reported to `AnchorOptions.onPosition` after each position update. */
+export interface AnchorPosition {
+  /** The final placement, after flipping. Also written to `data-anchor-placement`. */
+  placement: AnchorFullPlacement
+  /** The physical side of the anchor the floating element sits on. */
+  side: 'top' | 'bottom' | 'left' | 'right'
+  /**
+   * The physical edge alignment: `start` is the left (top/bottom sides) or top (left/right sides)
+   * edge.
+   */
+  align: 'start' | 'center' | 'end'
+  /** The applied `top` / `left` in pixels (viewport coordinates when `fixed`). */
+  top: number
+  left: number
+  /** Whether the element is positioned with `position: fixed` (always for `[popover]`). */
+  fixed: boolean
+  /** The floating element's laid-out size after constraints. */
+  width: number
+  height: number
+  /** The anchor rectangle in viewport coordinates. */
+  anchorRect: DOMRect
+  /** Space available on the final side, within the collision padding. */
+  availableWidth: number
+  availableHeight: number
+}
+
+const defaultViewportPaddingPx = 16
+
+function resolvePadding(padding: AnchorOptions['collisionPadding']): AnchorPadding {
+  if (typeof padding === 'number') {
+    return { top: padding, right: padding, bottom: padding, left: padding }
+  }
+  return {
+    top: padding?.top ?? defaultViewportPaddingPx,
+    right: padding?.right ?? defaultViewportPaddingPx,
+    bottom: padding?.bottom ?? defaultViewportPaddingPx,
+    left: padding?.left ?? defaultViewportPaddingPx,
+  }
+}
+
+const noPadding: AnchorPadding = { top: 0, right: 0, bottom: 0, left: 0 }
 
 function isHorizontalPlacement(placement: ExtendedAnchorPlacement) {
   return placement.startsWith('left') || placement.startsWith('right')
@@ -343,25 +407,25 @@ function getFloatingDimensions(
 
 type FloatingDimensions = ReturnType<typeof getFloatingDimensions>
 
-function getClientViewportBounds(padding = 0) {
+function getClientViewportBounds(padding: AnchorPadding = noPadding) {
   return {
-    left: padding,
-    top: padding,
-    right: window.innerWidth - padding,
-    bottom: window.innerHeight - padding,
+    left: padding.left,
+    top: padding.top,
+    right: window.innerWidth - padding.right,
+    bottom: window.innerHeight - padding.bottom,
   }
 }
 
-function getDocumentViewportBounds(isFixed: boolean, padding = 0) {
+function getDocumentViewportBounds(isFixed: boolean, padding: AnchorPadding = noPadding) {
   if (isFixed) {
     return getClientViewportBounds(padding)
   }
 
   return {
-    left: window.scrollX + padding,
-    top: window.scrollY + padding,
-    right: window.scrollX + window.innerWidth - padding,
-    bottom: window.scrollY + window.innerHeight - padding,
+    left: window.scrollX + padding.left,
+    top: window.scrollY + padding.top,
+    right: window.scrollX + window.innerWidth - padding.right,
+    bottom: window.scrollY + window.innerHeight - padding.bottom,
   }
 }
 
@@ -487,8 +551,9 @@ function getPlacementScore(
   offsetY: number,
   relativeOffsetX?: number | null,
   relativeOffsetY?: number | null,
+  padding: AnchorPadding = resolvePadding(undefined),
 ) {
-  let viewport = getClientViewportBounds(viewportPaddingPx)
+  let viewport = getClientViewportBounds(padding)
 
   let bounds = calculateFloatingBounds(
     placement,
@@ -535,6 +600,7 @@ function getFlippedPlacement(
   offsetY: number,
   relativeOffsetX?: number | null,
   relativeOffsetY?: number | null,
+  padding?: AnchorPadding,
 ) {
   let hasScroll = window.scrollY > 0
 
@@ -557,6 +623,7 @@ function getFlippedPlacement(
     offsetY,
     relativeOffsetX,
     relativeOffsetY,
+    padding,
   )
 
   if (original.perfect) {
@@ -577,6 +644,7 @@ function getFlippedPlacement(
     offsetY,
     relativeOffsetX,
     relativeOffsetY,
+    padding,
   )
 
   if (
@@ -732,7 +800,9 @@ export function anchor(
     offset: rawOffset = 0,
     offsetX: rawOffsetX = 0,
     offsetY: rawOffsetY = 0,
+    onPosition,
   } = options
+  let padding = resolvePadding(options.collisionPadding)
 
   let anchorIsAbsolutePositioned =
     anchorTarget instanceof HTMLElement && getComputedStyle(anchorTarget).position !== 'fixed'
@@ -748,7 +818,7 @@ export function anchor(
     let offset = resolveOffsetValue(rawOffset, floating)
     let offsetX = resolveOffsetValue(rawOffsetX, floating)
     let offsetY = resolveOffsetValue(rawOffsetY, floating)
-    let viewport = getDocumentViewportBounds(isFixed, viewportPaddingPx)
+    let viewport = getDocumentViewportBounds(isFixed, padding)
 
     let placementWidth =
       relativeTo && naturalDimensions.relativeWidth
@@ -773,6 +843,7 @@ export function anchor(
       offsetY,
       naturalDimensions.relativeOffsetX,
       naturalDimensions.relativeOffsetY,
+      padding,
     )
     floating.setAttribute('data-anchor-placement', finalPlacement)
 
@@ -938,6 +1009,23 @@ export function anchor(
 
     lastAnchorRect = anchorRect
     lastFloatingDimensions = dimensions
+
+    if (onPosition) {
+      let [side, edge] = finalPlacement.split('-') as [AnchorPosition['side'], string | undefined]
+      onPosition({
+        placement: finalPlacement,
+        side,
+        align: edge === 'start' ? 'start' : edge === 'end' ? 'end' : 'center',
+        top: position.top,
+        left: position.left,
+        fixed: isFixed,
+        width: dimensions.width,
+        height: dimensions.height,
+        anchorRect,
+        availableWidth,
+        availableHeight,
+      })
+    }
   }
 
   updatePosition()

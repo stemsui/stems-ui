@@ -29,6 +29,11 @@ export const InputDemo = clientEntry(import.meta.url, function InputDemo(handle:
       </div>
 
       <div class="flex flex-col gap-2">
+        <Label for="input-username">Username (uncontrolled, with default)</Label>
+        <Input id="input-username" defaultValue="adalovelace" />
+      </div>
+
+      <div class="flex flex-col gap-2">
         <Label for="input-file">Picture</Label>
         <Input id="input-file" type="file" />
       </div>

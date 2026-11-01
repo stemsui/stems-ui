@@ -100,10 +100,18 @@ const inputMixin: MixinFactory<HTMLInputElement, [options?: InputOptions], Eleme
       let disabled = options.disabled ?? props.disabled === true
       let state = getState(currentValue, disabled)
 
+      // Only pass `value` / `defaultValue` when the options set them. `attrs()` copies keys whose
+      // value is `undefined`, and an explicit `value: undefined` makes Remix clear the input,
+      // which wiped uncontrolled default values.
+      let valueProps: ElementProps = {}
+      if (options.value !== undefined) valueProps.value = options.value
+      if (!controlled && options.defaultValue !== undefined) {
+        valueProps.defaultValue = options.defaultValue
+      }
+
       return [
         attrs({
-          value: options.value,
-          defaultValue: controlled ? undefined : options.defaultValue,
+          ...valueProps,
           disabled: options.disabled || undefined,
           'data-disabled': state.disabled ? '' : undefined,
           'data-focused': state.focused ? '' : undefined,

@@ -5,6 +5,7 @@ import { expect } from 'remix/assert'
 import { afterEach, beforeEach, describe, it, mock } from 'remix/test'
 
 import { anchor } from './anchor.ts'
+import type { AnchorPosition } from './anchor.ts'
 
 type RectInit = {
   height: number
@@ -475,5 +476,66 @@ describe('anchor', () => {
     cleanup()
 
     expect(cancelAnimationFrame).toHaveBeenCalledWith(1)
+  })
+  it('respects collisionPadding when constraining and flipping', () => {
+    let floating = document.createElement('div')
+    let anchorElement = document.createElement('button')
+    document.body.append(floating, anchorElement)
+
+    mockLayout(floating, { top: 0, left: 0, width: 120, height: 80 })
+    mockLayout(anchorElement, { top: 40, left: 0, width: 80, height: 28 })
+
+    // Default padding (16px) pushes a left-aligned popup off the edge; 4px padding allows it.
+    let cleanup = anchor(floating, anchorElement, { placement: 'bottom', collisionPadding: 4 })
+    expect(floating.style.left).toBe('4px')
+    cleanup()
+
+    cleanup = anchor(floating, anchorElement, { placement: 'bottom' })
+    expect(floating.style.left).toBe('16px')
+    cleanup()
+
+    // Bottom padding large enough that the bottom side no longer fits: flips to top.
+    mockLayout(anchorElement, { top: 200, left: 200, width: 80, height: 28 })
+    cleanup = anchor(floating, anchorElement, {
+      placement: 'bottom',
+      collisionPadding: { bottom: 400 },
+    })
+    expect(floating.getAttribute('data-anchor-placement')).toBe('top')
+    cleanup()
+  })
+
+  it('reports the resolved placement and geometry through onPosition', () => {
+    let floating = document.createElement('div')
+    floating.setAttribute('popover', 'manual')
+    let anchorElement = document.createElement('button')
+    document.body.append(floating, anchorElement)
+
+    mockLayout(floating, { top: 0, left: 0, width: 120, height: 80 })
+    mockLayout(anchorElement, { top: 560, left: 200, width: 80, height: 28 })
+
+    let positions: AnchorPosition[] = []
+    let cleanup = anchor(floating, anchorElement, {
+      placement: 'bottom-start',
+      offset: 4,
+      collisionPadding: 5,
+      onPosition: (position) => positions.push(position),
+    })
+
+    expect(positions.length).toBe(1)
+    let [position] = positions
+    expect(position.placement).toBe('top-start')
+    expect(position.side).toBe('top')
+    expect(position.align).toBe('start')
+    expect(position.fixed).toBe(true)
+    expect(position.top).toBe(476)
+    expect(position.left).toBe(200)
+    expect(position.width).toBe(120)
+    expect(position.height).toBe(80)
+    expect(position.anchorRect.top).toBe(560)
+    // Space above the anchor: from the viewport padding to the popup's bottom edge.
+    expect(position.availableHeight).toBe(551)
+    expect(position.availableWidth).toBe(790)
+
+    cleanup()
   })
 })

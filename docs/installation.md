@@ -1,6 +1,6 @@
 # Installing Stems UI in a Remix 3 app
 
-Verified on Nov 1, 2026 against a fresh `remix new` app (`remix@3.1.0`, `@remix-run/ui@0.13.0`,
+Verified on Nov 1, 2026 against a fresh `remix new` app (`remix@3.1.0`,
 `shadcn@4.23.0`, `tailwindcss@4.3.3`).
 
 Stems components are copied into your app with the shadcn CLI, like shadcn/ui. A Remix 3 app needs
@@ -36,8 +36,7 @@ In `app/assets.ts`:
 
 ```ts
 allowFiles: ['app/routes.ts', 'app/**/public/**', 'app/ui/**', 'app/lib/**'],
-// '@remix-run/ui' is only needed until dropdown-menu moves to stems-ui/menu (Phase 2).
-allowPackages: ['remix', '@remix-run/ui', 'stems-ui', 'clsx', 'tailwind-merge'],
+allowPackages: ['remix', 'stems-ui', 'clsx', 'tailwind-merge'],
 ```
 
 ## 4. Set up Tailwind CSS v4
@@ -100,7 +99,7 @@ The registry host is not public yet. For local development, run the docs app
 npx shadcn add @stemsui/theme @stemsui/dropdown-menu
 ```
 
-This writes `app/ui/dropdown-menu.tsx` and `app/lib/utils.ts`, installs `stems-ui` (plus, temporarily, `@remix-run/ui`),
+This writes `app/ui/dropdown-menu.tsx` and `app/lib/utils.ts`, installs `stems-ui`,
 `clsx`, and `tailwind-merge`, and merges the theme variables into `app/styles/app.css`. The `theme`
 item also installs `tw-animate-css` and `shadcn` and adds `@import "tw-animate-css"` and
 `@import "shadcn/tailwind.css"`, the same imports `shadcn init` adds, so shadcn's animation and

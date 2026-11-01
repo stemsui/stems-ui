@@ -94,7 +94,10 @@ export function AnchoredPanel(handle: Handle) {
 ## `stems-ui/anchor`
 
 - `anchor(floatingElement, anchorTarget, options)`: positions `floatingElement` against an element or coordinate target, starts animation-frame polling for geometry changes, and returns a cleanup function.
-- `AnchorOptions`: placement, inset, relative alignment, and offset options.
+- `AnchorOptions`: placement, inset, relative alignment, offset, `collisionPadding`, and
+  `onPosition` options.
+- `AnchorPosition`: the geometry passed to `onPosition`. `AnchorPadding`: per-edge padding.
+  `AnchorFullPlacement`: every placement `anchor()` can resolve to.
 - `AnchorPoint`: viewport coordinate target with `x`, `y`, and optional `width`/`height`.
 - `AnchorPlacement`: exported placement names for the main sides and top/bottom start/end alignment.
 - `AnchorTarget`: an `HTMLElement` or `AnchorPoint`.
@@ -151,6 +154,37 @@ anchor(panel, trigger, {
   offsetX: (floating) => floating.offsetWidth / 20,
 })
 ```
+
+## Collision padding
+
+`collisionPadding` sets the space kept from the viewport edges when choosing a side and clamping
+(defaults to `16`). Pass a number for every edge or an object for individual edges.
+
+```tsx
+anchor(panel, trigger, { placement: 'bottom', collisionPadding: 5 })
+anchor(panel, trigger, { placement: 'bottom', collisionPadding: { top: 64, bottom: 8 } })
+```
+
+## Position callback
+
+`onPosition` is called after every position update with the final placement and geometry, so a
+widget can expose the resolved side or size its content (`stems-ui/popover` uses it for
+`data-side`, `--available-height`, `--transform-origin`, and the arrow).
+
+```tsx
+anchor(panel, trigger, {
+  placement: 'bottom-start',
+  onPosition({ side, align, top, left, width, height, anchorRect, availableHeight }) {
+    panel.dataset.side = side
+    panel.style.setProperty('--available-height', `${availableHeight}px`)
+  },
+})
+```
+
+`AnchorPosition` fields: `placement` (also written to `data-anchor-placement`), `side`
+(`top` | `bottom` | `left` | `right`), `align` (physical `start` | `center` | `end`), `top` /
+`left` (applied coordinates; viewport coordinates when `fixed`), `fixed`, `width` / `height`
+(after constraints), `anchorRect` (viewport), `availableWidth` / `availableHeight`.
 
 ## Inset Positioning
 
