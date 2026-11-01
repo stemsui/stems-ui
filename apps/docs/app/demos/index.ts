@@ -20,6 +20,19 @@ import { ToastDemo } from './public/toast.tsx'
 import { ContextMenuDemo } from './public/context-menu.tsx'
 import { TooltipDemo } from './public/tooltip.tsx'
 import { PreviewCardDemo } from './public/preview-card.tsx'
+import { FieldDemo } from './public/field.tsx'
+import { FieldsetDemo } from './public/fieldset.tsx'
+import { FormDemo } from './public/form.tsx'
+import { CheckboxDemo } from './public/checkbox.tsx'
+import { CheckboxGroupDemo } from './public/checkbox-group.tsx'
+import { RadioGroupDemo } from './public/radio-group.tsx'
+import { ToggleButtonGroupDemo } from './public/toggle-button-group.tsx'
+import { NumberFieldDemo } from './public/number-field.tsx'
+import { SliderDemo } from './public/slider.tsx'
+import { OtpFieldDemo } from './public/otp-field.tsx'
+import { SelectDemo } from './public/select.tsx'
+import { ComboboxDemo } from './public/combobox.tsx'
+import { AutocompleteDemo } from './public/autocomplete.tsx'
 
 export interface DemoEntry {
   title: string
@@ -155,5 +168,83 @@ export const demos: Record<string, DemoEntry> = {
     description: 'A popup that previews a link destination on hover.',
     behavior: ['stems-ui/preview-card'],
     Demo: PreviewCardDemo,
+  },
+  field: {
+    title: 'Field',
+    description: 'Labels, descriptions, and validation for a form control.',
+    behavior: ['stems-ui/field'],
+    Demo: FieldDemo,
+  },
+  fieldset: {
+    title: 'Fieldset',
+    description: 'Groups related form controls under a legend.',
+    behavior: ['stems-ui/fieldset'],
+    Demo: FieldsetDemo,
+  },
+  form: {
+    title: 'Form',
+    description: 'A native form with consolidated validation errors.',
+    behavior: ['stems-ui/form'],
+    Demo: FormDemo,
+  },
+  checkbox: {
+    title: 'Checkbox',
+    description: 'A control for toggling an option on or off.',
+    behavior: ['stems-ui/checkbox'],
+    Demo: CheckboxDemo,
+  },
+  'checkbox-group': {
+    title: 'Checkbox Group',
+    description: 'Shared state for a set of checkboxes.',
+    behavior: ['stems-ui/checkbox-group'],
+    Demo: CheckboxGroupDemo,
+  },
+  'radio-group': {
+    title: 'Radio Group',
+    description: 'A set of options where only one can be selected.',
+    behavior: ['stems-ui/radio-group'],
+    Demo: RadioGroupDemo,
+  },
+  'toggle-button-group': {
+    title: 'Toggle Button Group',
+    description: 'A set of toggle buttons with shared state.',
+    behavior: ['stems-ui/toggle-button-group'],
+    Demo: ToggleButtonGroupDemo,
+  },
+  'number-field': {
+    title: 'Number Field',
+    description: 'A numeric input with increment and decrement buttons and a scrub area.',
+    behavior: ['stems-ui/number-field'],
+    Demo: NumberFieldDemo,
+  },
+  slider: {
+    title: 'Slider',
+    description: 'Select a value or range by dragging a thumb.',
+    behavior: ['stems-ui/slider'],
+    Demo: SliderDemo,
+  },
+  'otp-field': {
+    title: 'OTP Field',
+    description: 'Entry for one-time passwords and verification codes.',
+    behavior: ['stems-ui/otp-field'],
+    Demo: OtpFieldDemo,
+  },
+  select: {
+    title: 'Select',
+    description: 'Choose one or more values from a dropdown list.',
+    behavior: ['stems-ui/select'],
+    Demo: SelectDemo,
+  },
+  combobox: {
+    title: 'Combobox',
+    description: 'An input with a filterable list of options to choose from.',
+    behavior: ['stems-ui/combobox'],
+    Demo: ComboboxDemo,
+  },
+  autocomplete: {
+    title: 'Autocomplete',
+    description: 'A free-text input with suggestions.',
+    behavior: ['stems-ui/autocomplete'],
+    Demo: AutocompleteDemo,
   },
 }
