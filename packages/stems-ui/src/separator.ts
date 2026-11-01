@@ -18,7 +18,11 @@ export interface SeparatorOptions {
 
 const separatorMixin: MixinFactory<HTMLElement, [options?: SeparatorOptions], ElementProps> =
   createMixin<HTMLElement, [options?: SeparatorOptions], ElementProps>((_handle, hostType) => {
-    return (options = {}) => {
+    // Remix calls the runner with `(...args, props)`, so when `separator()` is called without
+    // options the host props arrive first. Only treat the first argument as options when a second
+    // (the props) follows it.
+    return (...args: [SeparatorOptions | undefined, ElementProps] | [ElementProps]) => {
+      let options: SeparatorOptions = args.length > 1 ? (args[0] ?? {}) : {}
       let orientation = options.orientation ?? 'horizontal'
 
       if (options.decorative) {

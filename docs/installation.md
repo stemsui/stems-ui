@@ -101,7 +101,10 @@ npx shadcn add @stemsui/theme @stemsui/dropdown-menu
 ```
 
 This writes `app/ui/dropdown-menu.tsx` and `app/lib/utils.ts`, installs `stems-ui` (plus, temporarily, `@remix-run/ui`),
-`clsx`, and `tailwind-merge`, and merges the theme variables into `app/styles/app.css`. shadcn rewrites
+`clsx`, and `tailwind-merge`, and merges the theme variables into `app/styles/app.css`. The `theme`
+item also installs `tw-animate-css` and `shadcn` and adds `@import "tw-animate-css"` and
+`@import "shadcn/tailwind.css"`, the same imports `shadcn init` adds, so shadcn's animation and
+`data-*` variant classes work. shadcn rewrites
 imports to your aliases **and keeps the `.ts`/`.tsx` extensions** Remix needs, e.g.
 `import { cn } from '#app/lib/utils.ts'`.
 

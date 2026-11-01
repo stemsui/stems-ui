@@ -1,5 +1,5 @@
 {
-  "$comment": "Stems owns every component. remixReference is the @remix-run/ui module to read/port from (MIT, attribute), with remixReferenceQuality good|partial|none; gaps lists what the Remix reference lacks versus Base UI (see docs/audit.md). progress.headless/styled: todo|done.",
+  "$comment": "Stems owns every component. remixReference is the @remix-run/ui module to read/port from (MIT, attribute), with remixReferenceQuality good|partial|none; gaps lists what the Remix reference lacks versus Base UI (see docs/audit.md). progress.headless/styled: todo|done. openGaps: known differences from Base UI remaining after implementation.",
   "baseUiVersion": "1.9.0",
   "remixUiReferenceVersion": "0.13.0",
   "components": [
@@ -24,9 +24,14 @@
       ],
       "buildsOn": [],
       "progress": {
-        "headless": "todo",
-        "styled": "todo"
-      }
+        "headless": "done",
+        "styled": "done"
+      },
+      "openGaps": [
+        "keepMounted is a no-op (closed panels stay in the DOM, hidden)",
+        "No Base UI eventDetails (reason/cancel)",
+        "Custom panel id breaks trigger aria-controls"
+      ]
     },
     {
       "baseUi": "Avatar",
@@ -39,9 +44,10 @@
       "gaps": ["Image loading status (data-loading/data-error), Fallback delay"],
       "buildsOn": ["stems-ui/animation"],
       "progress": {
-        "headless": "todo",
-        "styled": "todo"
-      }
+        "headless": "done",
+        "styled": "done"
+      },
+      "openGaps": ["Image data-starting-style/data-ending-style"]
     },
     {
       "baseUi": "Button",
@@ -54,8 +60,8 @@
       "gaps": ["focusableWhenDisabled via aria-disabled + click guard; data-disabled"],
       "buildsOn": [],
       "progress": {
-        "headless": "todo",
-        "styled": "todo"
+        "headless": "done",
+        "styled": "done"
       }
     },
     {
@@ -72,9 +78,14 @@
       ],
       "buildsOn": ["stems-ui/accordion"],
       "progress": {
-        "headless": "todo",
-        "styled": "todo"
-      }
+        "headless": "done",
+        "styled": "done"
+      },
+      "openGaps": [
+        "keepMounted is a no-op",
+        "Root lacks data-starting-style/data-ending-style",
+        "No Base UI eventDetails (reason/cancel)"
+      ]
     },
     {
       "baseUi": "Input",
@@ -87,9 +98,10 @@
       "gaps": ["Field state attributes come in phase 3"],
       "buildsOn": [],
       "progress": {
-        "headless": "todo",
-        "styled": "todo"
-      }
+        "headless": "done",
+        "styled": "done"
+      },
+      "openGaps": ["data-valid/data-invalid wait for Field (Phase 3)"]
     },
     {
       "baseUi": "Meter",
@@ -102,9 +114,10 @@
       "gaps": ["role=meter, aria-valuetext, Intl format"],
       "buildsOn": [],
       "progress": {
-        "headless": "todo",
-        "styled": "todo"
-      }
+        "headless": "done",
+        "styled": "done"
+      },
+      "openGaps": ["Base UI's en-US locale during SSR not replicated (pass `locale`)"]
     },
     {
       "baseUi": "Progress",
@@ -117,9 +130,13 @@
       "gaps": ["role=progressbar, indeterminate, data-complete/indeterminate/progressing"],
       "buildsOn": [],
       "progress": {
-        "headless": "todo",
-        "styled": "todo"
-      }
+        "headless": "done",
+        "styled": "done"
+      },
+      "openGaps": [
+        "Base UI's en-US locale during SSR not replicated (pass `locale`)",
+        "aria-labelledby set even without a label() element"
+      ]
     },
     {
       "baseUi": "Separator",
@@ -152,9 +169,12 @@
       ],
       "buildsOn": [],
       "progress": {
-        "headless": "todo",
-        "styled": "todo"
-      }
+        "headless": "done",
+        "styled": "done"
+      },
+      "openGaps": [
+        "Field state attributes (data-valid/invalid/dirty/touched/filled/focused) wait for Field (Phase 3)"
+      ]
     },
     {
       "baseUi": "Tabs",
@@ -175,9 +195,14 @@
       ],
       "buildsOn": ["stems-ui/tabs"],
       "progress": {
-        "headless": "todo",
-        "styled": "todo"
-      }
+        "headless": "done",
+        "styled": "done"
+      },
+      "openGaps": [
+        "Panel data-starting-style/data-ending-style",
+        "Automatic fallback when the selected tab is disabled/removed ('disabled'/'missing' reasons) and the 'initial' callback",
+        "Indicator renderBeforeHydration"
+      ]
     },
     {
       "baseUi": "Toggle",
@@ -192,8 +217,8 @@
       ],
       "buildsOn": [],
       "progress": {
-        "headless": "todo",
-        "styled": "todo"
+        "headless": "done",
+        "styled": "done"
       }
     },
     {

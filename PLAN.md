@@ -222,19 +222,28 @@ Follow-ups:
   `pnpm --filter stems-ui dev` (tsc watch) while working on primitives.
 - Theme: `registry.json`'s `css` (base layer) duplicates `theme.css`'s `@layer base`;
   generate it if it grows.
-- CI (GitHub Actions): install, build, typecheck, test, format check.
+- CI (GitHub Actions): install, build, typecheck, test, format check. ✅ (`.github/workflows/ci.yml`)
 
-### Phase 1: Internals + simple components
+### Phase 1: Internals + simple components ✅ (Nov 1, 2026)
 
-Shared internals first, ported from Remix's `lib/` and `anchor` where possible: anchor
-positioning, outside click/dismiss layers, focus management, typeahead, keyboard helpers,
-scroll lock, transition-state attributes (`data-starting-style` / `data-ending-style`).
+- [x] Internals ported from `@remix-run/ui` 0.13.0 with their tests: `anchor` (public as
+      `stems-ui/anchor`), `lib/` keydown, typeahead, outside-click, scroll-lock, hover-aim,
+      wait-for-css-transition, flash-attribute.
+- [x] New internals: `lib/direction.ts` (RTL), `lib/roving-focus.ts` (composite keyboard
+      navigation), `lib/presence.ts` (mount/unmount transitions with
+      `data-starting-style` / `data-ending-style`, for Phase 2 overlays),
+      `lib/collapsible-panel.ts` (shared collapsible/accordion panel).
+- [x] Headless + styled + docs: Button, Input, Label (styled only), Separator, Avatar,
+      Progress, Meter, Switch, Toggle Button, Collapsible, Accordion, Tabs.
+- [x] Theme ships `tw-animate-css` + `shadcn/tailwind.css` like `shadcn init`, so shadcn
+      classes copy over unchanged.
+- [x] Verified in a fresh `remix new` app via `shadcn add` (tabs, accordion, switch, button).
+- [ ] Replace the temporary `@remix-run/ui/menu` dependency in the registry's dropdown-menu
+      (moves to Phase 2 with `stems-ui/menu`).
 
-- Button, Input, Label, Separator (✅), Avatar, Progress, Meter.
-- Switch, Toggle Button, Collapsible, Accordion, Tabs (with manual activation,
-  orientation, RTL).
-- Replace the temporary `@remix-run/ui/menu` dependency in the registry's dropdown-menu once
-  `stems-ui/menu` lands (Phase 2).
+Status: 11 of 39 components have headless + styled versions; 249 tests. Remaining
+differences from Base UI per component are in `coverage.json` (`openGaps`). Remix runtime
+pitfalls found along the way are in `CONVENTIONS.md`.
 
 ### Phase 2: Popups and overlays
 

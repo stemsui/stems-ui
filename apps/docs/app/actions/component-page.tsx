@@ -30,7 +30,7 @@ export function ComponentPage(handle: Handle<{ name: string }>) {
               <code>npx shadcn add @stemsui/{name}</code>
             </pre>
             <p class="text-muted-foreground">
-              Behavior:{' '}
+              Behavior: {behavior.length === 0 ? 'none (styling only)' : null}
               {behavior.map((module, index) => (
                 <>
                   {index > 0 ? ', ' : null}

@@ -1,20 +1,12 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "types": [
-      "node"
-    ],
+    "types": ["node"],
     "noEmit": true,
     "jsxImportSource": "remix/component",
     "paths": {
-      "stems-ui/*": [
-        "../stems-ui/src/*.ts",
-        "../stems-ui/src/*.tsx"
-      ]
+      "stems-ui/*": ["../stems-ui/src/*.ts", "../stems-ui/src/*.tsx"]
     }
   },
-  "include": [
-    "src",
-    "scripts"
-  ]
+  "include": ["src", "scripts"]
 }

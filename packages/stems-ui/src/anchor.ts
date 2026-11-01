@@ -19,14 +19,7 @@ type ExtendedAnchorPlacement =
  * Main-side and top/bottom edge alignments. `AnchorOptions` also accepts left/right edge alignments.
  */
 export type AnchorPlacement =
-  | 'top'
-  | 'bottom'
-  | 'left'
-  | 'right'
-  | 'top-start'
-  | 'top-end'
-  | 'bottom-start'
-  | 'bottom-end'
+  'top' | 'bottom' | 'left' | 'right' | 'top-start' | 'top-end' | 'bottom-start' | 'bottom-end'
 
 type AnchorOffsetValue = number | ((floating: HTMLElement) => number)
 

@@ -1,4 +1,6 @@
 @import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
 @import '../../../../packages/registry/src/styles/theme.css';
 
 /* Registry components live outside this app, so tell Tailwind to scan them. */

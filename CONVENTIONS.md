@@ -94,6 +94,26 @@ Clashes with Remix win, and get documented:
   `coverage.json`. Ported tests are renamed to `*.test.browser.ts(x)` and import from
   `remix/assert` and `remix/test`.
 
+### Remix runtime pitfalls (learned in Phase 1)
+
+- **Optional mixin arguments shift.** Remix calls a mixin's render function as
+  `(...args, props)`, so `foo()` with no arguments puts the host props in the first parameter.
+  Never write `(options = {}, props) => …`; use `splitOptions` from `lib/collapsible-panel.ts`
+  (or check the argument count) and test the no-argument call.
+- **Pass `aria-*` values as strings.** The server renderer writes `true` as a bare attribute and
+  drops `false`, while the client writes `"true"`/`"false"`. Use `'true'`/`'false'`.
+- **Don't call a mixin's own `handle.update()`.** It can re-render the mixin with stale arguments
+  after its owner re-rendered. Re-render through the Context provider's handle, or write DOM
+  attributes directly.
+- **Read `handle.signal` during setup or render only**, and capture it. Reading it later throws,
+  and the scheduler swallows the error.
+- **A mixin can't remove its element.** Options like Base UI's `keepMounted` belong in the styled
+  registry component (which can choose not to render children) or are documented as no-ops.
+- **`hidden="until-found"` keeps the box laid out** (it uses `content-visibility`). Collapse any
+  explicit size when a panel finishes closing.
+- **Test globs:** `src/tabs*` also matches the `src/tabs/` README folder and reports a bogus
+  "Directory import" failure. Use `src/tabs.test*`.
+
 ### Documentation
 
 - Each module has `src/<module>/README.md`: one-line summary, Base UI equivalent link, usage,

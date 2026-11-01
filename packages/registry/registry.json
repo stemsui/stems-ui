@@ -7,13 +7,20 @@
       "name": "theme",
       "type": "registry:theme",
       "title": "Stems UI theme",
-      "description": "shadcn/ui CSS variables (neutral). cssVars are generated from src/styles/theme.css at build time; keep `css` in sync with its @layer base block.",
+      "description": "shadcn/ui CSS variables (neutral), plus tw-animate-css and shadcn/tailwind.css (the same imports `shadcn init` adds). cssVars are generated from src/styles/theme.css at build time; keep `css` in sync with its @layer base block.",
       "css": {
+        "@import \"tw-animate-css\"": {},
+        "@import \"shadcn/tailwind.css\"": {},
         "@layer base": {
-          "*": { "@apply border-border outline-ring/50": {} },
-          "body": { "@apply bg-background text-foreground": {} }
+          "*": {
+            "@apply border-border outline-ring/50": {}
+          },
+          "body": {
+            "@apply bg-background text-foreground": {}
+          }
         }
-      }
+      },
+      "dependencies": ["tw-animate-css", "shadcn"]
     },
     {
       "name": "utils",
@@ -21,7 +28,12 @@
       "title": "cn()",
       "description": "Class name helper (clsx + tailwind-merge).",
       "dependencies": ["clsx", "tailwind-merge"],
-      "files": [{ "path": "src/lib/utils.ts", "type": "registry:lib" }]
+      "files": [
+        {
+          "path": "src/lib/utils.ts",
+          "type": "registry:lib"
+        }
+      ]
     },
     {
       "name": "separator",
@@ -30,7 +42,12 @@
       "description": "Visually or semantically separates content. Behavior: stems-ui/separator.",
       "dependencies": ["stems-ui"],
       "registryDependencies": ["@stemsui/utils"],
-      "files": [{ "path": "src/ui/separator.tsx", "type": "registry:ui" }]
+      "files": [
+        {
+          "path": "src/ui/separator.tsx",
+          "type": "registry:ui"
+        }
+      ]
     },
     {
       "name": "dropdown-menu",
@@ -39,7 +56,165 @@
       "description": "A menu of actions triggered by a button. Behavior: @remix-run/ui/menu.",
       "dependencies": ["@remix-run/ui", "stems-ui"],
       "registryDependencies": ["@stemsui/utils"],
-      "files": [{ "path": "src/ui/dropdown-menu.tsx", "type": "registry:ui" }]
+      "files": [
+        {
+          "path": "src/ui/dropdown-menu.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "switch",
+      "type": "registry:ui",
+      "title": "Switch",
+      "description": "A control that indicates whether a setting is on or off. Behavior: stems-ui/switch.",
+      "dependencies": ["stems-ui"],
+      "registryDependencies": ["@stemsui/utils"],
+      "files": [
+        {
+          "path": "src/ui/switch.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "toggle-button",
+      "type": "registry:ui",
+      "title": "Toggle Button",
+      "description": "A two-state button that can be on or off (shadcn's toggle). Behavior: stems-ui/toggle-button.",
+      "dependencies": ["stems-ui"],
+      "registryDependencies": ["@stemsui/utils"],
+      "files": [
+        {
+          "path": "src/ui/toggle-button.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "tabs",
+      "type": "registry:ui",
+      "title": "Tabs",
+      "description": "A set of layered sections of content, displayed one at a time. Behavior: stems-ui/tabs.",
+      "dependencies": ["stems-ui"],
+      "registryDependencies": ["@stemsui/utils"],
+      "files": [
+        {
+          "path": "src/ui/tabs.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "button",
+      "type": "registry:ui",
+      "title": "Button",
+      "description": "Displays a button or a component that looks like a button. Behavior: stems-ui/button.",
+      "dependencies": ["stems-ui"],
+      "registryDependencies": ["@stemsui/utils"],
+      "files": [
+        {
+          "path": "src/ui/button.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "input",
+      "type": "registry:ui",
+      "title": "Input",
+      "description": "A native text input with state data attributes. Behavior: stems-ui/input.",
+      "dependencies": ["stems-ui"],
+      "registryDependencies": ["@stemsui/utils"],
+      "files": [
+        {
+          "path": "src/ui/input.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "label",
+      "type": "registry:ui",
+      "title": "Label",
+      "description": "Renders an accessible label associated with controls.",
+      "registryDependencies": ["@stemsui/utils"],
+      "files": [
+        {
+          "path": "src/ui/label.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "avatar",
+      "type": "registry:ui",
+      "title": "Avatar",
+      "description": "An image element with a fallback for representing the user. Behavior: stems-ui/avatar.",
+      "dependencies": ["stems-ui"],
+      "registryDependencies": ["@stemsui/utils"],
+      "files": [
+        {
+          "path": "src/ui/avatar.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "progress",
+      "type": "registry:ui",
+      "title": "Progress",
+      "description": "Displays the completion status of a task. Behavior: stems-ui/progress.",
+      "dependencies": ["stems-ui"],
+      "registryDependencies": ["@stemsui/utils"],
+      "files": [
+        {
+          "path": "src/ui/progress.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "meter",
+      "type": "registry:ui",
+      "title": "Meter",
+      "description": "A graphical display of a numeric value within a range. Behavior: stems-ui/meter.",
+      "dependencies": ["stems-ui"],
+      "registryDependencies": ["@stemsui/utils"],
+      "files": [
+        {
+          "path": "src/ui/meter.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "collapsible",
+      "type": "registry:ui",
+      "title": "Collapsible",
+      "description": "An interactive component which expands/collapses a panel. Behavior: stems-ui/collapsible.",
+      "dependencies": ["stems-ui"],
+      "registryDependencies": ["@stemsui/utils"],
+      "files": [
+        {
+          "path": "src/ui/collapsible.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "accordion",
+      "type": "registry:ui",
+      "title": "Accordion",
+      "description": "A vertically stacked set of interactive headings that each reveal a section of content. Behavior: stems-ui/accordion.",
+      "dependencies": ["stems-ui"],
+      "registryDependencies": ["@stemsui/utils"],
+      "files": [
+        {
+          "path": "src/ui/accordion.tsx",
+          "type": "registry:ui"
+        }
+      ]
     }
   ]
 }

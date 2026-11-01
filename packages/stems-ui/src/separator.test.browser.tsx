@@ -45,6 +45,19 @@ describe('separator', () => {
     assert.equal(host.getAttribute('role'), null)
   })
 
+  it('ignores host props when called without options', (t) => {
+    // Host props must not be mistaken for options (Remix passes props as the last argument).
+    let { $, cleanup } = render(
+      <div {...({ orientation: 'vertical', decorative: true } as object)} mix={separator()} />,
+    )
+    t.after(cleanup)
+
+    let host = $('div')
+    assert.ok(host)
+    assert.equal(host.getAttribute('role'), 'separator')
+    assert.equal(host.getAttribute('data-orientation'), 'horizontal')
+  })
+
   it('lets explicit host props win', (t) => {
     let { $, cleanup } = render(<div role="presentation" mix={separator()} />)
     t.after(cleanup)
