@@ -125,7 +125,7 @@ export function Layout(handle: Handle<LayoutProps>) {
               href={routes.home.href()}
               class="flex items-center gap-2 text-base font-semibold tracking-tight"
             >
-              <img src="/favicon.svg" alt="" class="size-5 dark:invert" />
+              <img src="/logo.svg" alt="" width="24" height="24" class="size-6" />
               Stems UI
             </a>
             <nav aria-label="Main" class="hidden items-center gap-4 text-sm sm:flex">
