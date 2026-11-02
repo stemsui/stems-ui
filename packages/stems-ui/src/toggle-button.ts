@@ -1,6 +1,7 @@
 import { attrs, createMixin, on, ref } from '@remix-run/component'
 import type { Dispatched, ElementProps, MixinFactory } from '@remix-run/component'
 
+import { getToolbar } from './lib/toolbar.ts'
 import { getToggleButtonGroup, type ToggleButtonGroupItem } from './toggle-button-group.ts'
 
 const TOGGLE_BUTTON_CHANGE_EVENT = 'stems:toggle-button-change' as const
@@ -65,6 +66,8 @@ const toggleButtonMixin: MixinFactory<HTMLElement, [options: ToggleButtonOptions
     let isButton = hostType === 'button'
     let uncontrolledPressed: boolean | undefined
     let group = getToggleButtonGroup(handle)
+    // Inside a toolbar, the toolbar's item mixin owns the tab stop (see `stems-ui/toolbar`).
+    let inToolbar = group?._inToolbar === true || getToolbar(handle) !== undefined
     let node: HTMLElement | undefined
     let entry: ToggleButtonGroupItem = { disabled: false, getNode: () => node }
 
@@ -92,15 +95,16 @@ const toggleButtonMixin: MixinFactory<HTMLElement, [options: ToggleButtonOptions
         isTrue(props['aria-disabled'])
       entry.disabled = disabled
       // Roving tabindex inside a group: one button is the tab stop.
-      let tabIndex = disabled
-        ? undefined
-        : group
-          ? group._isTabbable(entry)
-            ? 0
-            : -1
-          : isButton
-            ? undefined
-            : 0
+      let tabIndex =
+        disabled || inToolbar
+          ? undefined
+          : group
+            ? group._isTabbable(entry)
+              ? 0
+              : -1
+            : isButton
+              ? undefined
+              : 0
 
       function setPressed(nextPressed: boolean, event: Event) {
         let target = event.currentTarget as HTMLElement

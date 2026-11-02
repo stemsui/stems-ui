@@ -288,13 +288,33 @@ Status: 34 of 39 Base UI components done (select-multiple and combobox-multiple 
 `multiple` option); 936 tests. Remix bugs found are in `docs/upstream-issues.md` (notably: a
 child component's growing array output is inserted after the parent's later siblings).
 
-### Phase 4: Composite and navigation
+### Phase 4: Composite and navigation ✅ (Nov 1, 2026)
 
-- Toolbar, Menubar, Navigation Menu, Scroll Area.
+- [x] Toolbar (one tab stop; `toolbar.item()` lets any Stems control join), Menubar (existing
+      `menu.Context`s join it; hover/arrow switching between menus).
+- [x] Navigation Menu with a shared morphing viewport and no portals: `Content` registers with
+      the root and `Viewport` renders every content (inactive ones `hidden`), so server HTML
+      contains every link.
+- [x] Scroll Area (native scrolling, custom scrollbars, RTL) and the Direction Provider utility
+      (a `display: contents` element with `dir`, read by every widget at event time).
+
+**All 37 Base UI components now have headless + styled versions** (38 registry items,
+1042 tests). Known differences from Base UI per component are in `coverage.json` (`openGaps`).
 
 ### Phase 5: 1.0
 
-- Direction (RTL), CSP review, full docs, theming guide, blocks/examples.
+- [ ] Cross-browser pass: Firefox and Safari (native `<dialog>` Escape routing, pointer lock
+      scrubbing, popover API, `hidden="until-found"`), touch devices, screen readers (VoiceOver,
+      NVDA) for every component.
+- [ ] Close high-value `openGaps`: detached triggers / `createHandle`, drawer snap points,
+      filterable menu, `eventDetails` everywhere, select/menu server HTML labels.
+- [ ] Report `docs/upstream-issues.md` to Remix; drop workarounds as fixes land. CSP Provider
+      stays blocked until Remix adds style nonces.
+- [ ] Docs site: per-component API reference generated from the READMEs, keyboard tables,
+      theming guide (swap shadcn themes), installation page, `@stemsui/init` item that automates
+      the Remix setup steps.
+- [ ] Publish: claim names, `stems-ui` 0.1.0 via Changesets, deploy the docs + registry, CI on
+      GitHub.
 
 ---
 

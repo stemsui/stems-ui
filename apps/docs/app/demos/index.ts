@@ -259,7 +259,7 @@ export const demos: Record<string, DemoEntry> = {
   menubar: {
     title: 'Menubar',
     description: 'A horizontal bar of menus, like a desktop application menu.',
-    behavior: ['stems-ui/menubar'],
+    behavior: ['stems-ui/menubar', 'stems-ui/menu'],
     Demo: MenubarDemo,
   },
   'navigation-menu': {
@@ -277,7 +277,12 @@ export const demos: Record<string, DemoEntry> = {
   toolbar: {
     title: 'Toolbar',
     description: 'A container for grouping a set of buttons and controls.',
-    behavior: ['stems-ui/toolbar'],
+    behavior: [
+      'stems-ui/toolbar',
+      'stems-ui/toggle-button-group',
+      'stems-ui/select',
+      'stems-ui/menu',
+    ],
     Demo: ToolbarDemo,
   },
 }

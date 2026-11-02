@@ -12,6 +12,7 @@ import { Context as FieldsetContext, type FieldsetContextValue } from './fieldse
 import { flag } from './lib/checkable.ts'
 import { getDirection } from './lib/direction.ts'
 import { getRovingMove, getRovingTargetIndex } from './lib/roving-focus.ts'
+import { getToolbar } from './lib/toolbar.ts'
 
 const TOGGLE_BUTTON_GROUP_CHANGE_EVENT = 'stems:toggle-button-group-change' as const
 
@@ -96,6 +97,11 @@ export interface ToggleButtonGroupContextValue {
   _setActive(entry: ToggleButtonGroupItem): void
   /** @internal Moves focus for an arrow, Home, or End key. Returns whether it handled it. */
   _navigate(entry: ToggleButtonGroupItem, event: KeyboardEvent): boolean
+  /**
+   * @internal Whether the group is inside a `stems-ui/toolbar`. The toolbar then owns the roving
+   * focus: the buttons are toolbar items (`toolbar.item()` / `toolbar.button()`).
+   */
+  readonly _inToolbar: boolean
 }
 
 /** @internal */
@@ -113,6 +119,7 @@ function ToggleButtonGroupProvider(
   // A toggle button group is not a form control (no Field integration, like Base UI), but it
   // follows an enclosing fieldset's `disabled`.
   let fieldset = handle.context.get(FieldsetContext) as FieldsetContextValue | undefined
+  let inToolbar = getToolbar(handle) !== undefined
 
   function isControlled() {
     return handle.props.value !== undefined
@@ -184,7 +191,11 @@ function ToggleButtonGroupProvider(
       active = entry
       void handle.update()
     },
+    get _inToolbar() {
+      return inToolbar
+    },
     _navigate(entry, event) {
+      if (inToolbar) return false
       if (event.altKey || event.ctrlKey || event.metaKey) return false
       let move = getRovingMove(event.key, context.orientation, getDirection(entry.getNode()))
       if (!move) return false

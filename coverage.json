@@ -748,10 +748,14 @@
       ],
       "buildsOn": ["stems-ui/menu"],
       "progress": {
-        "headless": "todo",
-        "styled": "todo"
+        "headless": "done",
+        "styled": "done"
       },
-      "openGaps": []
+      "openGaps": [
+        "No typeahead across menubar triggers",
+        "data-has-submenu-open for initially open menus appears only after hydration",
+        "menu.Context modal is ignored inside a menubar (menubar modal applies)"
+      ]
     },
     {
       "baseUi": "Navigation Menu",
@@ -766,10 +770,14 @@
       ],
       "buildsOn": ["stems-ui/anchor", "stems-ui/popover"],
       "progress": {
-        "headless": "todo",
-        "styled": "todo"
+        "headless": "done",
+        "styled": "done"
       },
-      "openGaps": []
+      "openGaps": [
+        "actionsRef/preventUnmountOnClose, data-instant, aria-owns re-parenting, collisionAvoidance/collisionBoundary/sticky",
+        "Content and Viewport are components (no portals): context inside content comes from the viewport position",
+        "Focus guards untested with screen readers; touch untested in a real browser"
+      ]
     },
     {
       "baseUi": "Scroll Area",
@@ -782,10 +790,14 @@
       "gaps": ["Custom scrollbars/thumb, overflow edge data attributes and CSS vars"],
       "buildsOn": [],
       "progress": {
-        "headless": "todo",
-        "styled": "todo"
+        "headless": "done",
+        "styled": "done"
       },
-      "openGaps": []
+      "openGaps": [
+        "Scrollbar/corner are `hidden` rather than unmounted when there is no overflow",
+        "No re-measure after viewport animations (call measure())",
+        "Track click jumps the thumb (Base UI) rather than paging"
+      ]
     },
     {
       "baseUi": "Toolbar",
@@ -800,10 +812,13 @@
       ],
       "buildsOn": [],
       "progress": {
-        "headless": "todo",
-        "styled": "todo"
+        "headless": "done",
+        "styled": "done"
       },
-      "openGaps": []
+      "openGaps": [
+        "Group disabled lives on toolbar.GroupContext (mixins cannot pass state to children)",
+        "Handles Home/End (Base UI does not)"
+      ]
     }
   ],
   "utilities": [
@@ -817,7 +832,14 @@
       ],
       "buildsOn": [],
       "phase": 5,
-      "notNeeded": false
+      "notNeeded": false,
+      "progress": {
+        "headless": "done",
+        "styled": "n/a"
+      },
+      "openGaps": [
+        "Renders a display:contents element with dir (also sets CSS direction, unlike Base UI)"
+      ]
     },
     {
       "baseUi": "CSP Provider",
@@ -830,7 +852,10 @@
       ],
       "buildsOn": [],
       "phase": 5,
-      "notNeeded": false
+      "notNeeded": false,
+      "openGaps": [
+        "Blocked upstream: server-rendered <style> tags have no nonce (docs/upstream-issues.md \u00a76)"
+      ]
     },
     {
       "baseUi": "mergeProps",

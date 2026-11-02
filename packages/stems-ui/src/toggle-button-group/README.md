@@ -83,3 +83,9 @@ Several pressed at once: `<toggleButtonGroup.Context multiple>`.
 | root   | `data-multiple`    | `multiple` is set                   |
 | button | `data-pressed`     | The button is pressed               |
 | button | `data-disabled`    | The button or the group is disabled |
+
+## Inside a toolbar
+
+When a toggle button group is placed inside a `toolbar.Context`, it hands arrow-key navigation to
+the toolbar so the whole toolbar has one tab stop. Add `toolbar.item()` (or `toolbar.button()`) to
+each toggle button's `mix` so it joins the toolbar's roving focus.

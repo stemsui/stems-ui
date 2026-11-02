@@ -28,6 +28,7 @@ import { separator as separatorMixin } from '../separator.ts'
 import { splitOptions } from './collapsible-panel.ts'
 import { getDirection, horizontalArrowStep } from './direction.ts'
 import { createHoverAim } from './hover-aim.ts'
+import { getMenubar, type MenubarContextValue } from './menubar.ts'
 import {
   createPopupArrow,
   createPopupBackdrop,
@@ -369,6 +370,9 @@ interface ItemEntry {
 
 type FocusStrategy = 'first' | 'last' | 'popup' | 'none'
 
+/** @internal Where focus goes when a menu opens: an edge item, the popup, or nowhere. */
+export type MenuFocusStrategy = FocusStrategy
+
 interface HighlightOptions {
   focus?: boolean
   reason?: MenuHighlightReason
@@ -431,6 +435,8 @@ export interface MenuContextValue {
   _contextFocus: HTMLElement | null
   /** @internal */
   _contextArea: HTMLElement | null
+  /** @internal The enclosing `menubar.Context` of a top-level menu. */
+  readonly _menubar: MenubarContextValue | undefined
   /** @internal */
   update(): Promise<unknown>
 }
@@ -453,6 +459,8 @@ function MenuProvider(handle: Handle<InternalProps, MenuContextValue>): () => Re
       ? (handle.context.get(MenuProvider) as MenuContextValue | undefined)
       : undefined
   if (kind === 'submenu' && !parent) kind = 'menu'
+  // A top-level menu inside `menubar.Context` becomes one of its menus.
+  let menubar = kind === 'menu' ? getMenubar(handle) : undefined
 
   let entries = new Map<HTMLElement, ItemEntry>()
   let children = new Set<MenuContextValue>()
@@ -481,6 +489,8 @@ function MenuProvider(handle: Handle<InternalProps, MenuContextValue>): () => Re
     },
     get modal() {
       if (kind === 'submenu') return false
+      // The menubar owns modality for its menus (lib/menubar.ts), keeping the menubar usable.
+      if (menubar) return false
       // Base UI: a menu opened by hovering its trigger is never modal.
       if (store.openReason === 'trigger-hover') return false
       return handle.props.modal ?? kind === 'menu'
@@ -522,9 +532,10 @@ function MenuProvider(handle: Handle<InternalProps, MenuContextValue>): () => Re
         if (child.store.open) child.store.setOpen(false, request)
       }
     } else {
-      if (handle.props.disabled) return false
+      if (handle.props.disabled || menubar?.disabled) return false
       // Base UI reports 'sibling-open'; lib/popup.ts has no such reason, so 'none' is used.
       parent?._closeChildren({ ...request, reason: 'none' }, menu)
+      menubar?._closeOthers(menu, request.event)
       if (kind === 'context-menu') {
         for (let other of openContextMenus) {
           if (other !== menu) other.close({ reason: 'outside-press', event: request.event })
@@ -536,9 +547,14 @@ function MenuProvider(handle: Handle<InternalProps, MenuContextValue>): () => Re
       if (open) openContextMenus.add(menu)
       else openContextMenus.delete(menu)
     }
+    if (accepted && open) menubar?._menuOpened(menu)
     return accepted
   }
   handle.signal.addEventListener('abort', () => openContextMenus.delete(menu))
+  if (menubar) {
+    // Menubar menus stay open when the pointer leaves the popup after a hover switch (Base UI).
+    store.hover.popupLeave = () => {}
+  }
 
   function orientation(): MenuOrientation {
     return handle.props.orientation ?? 'vertical'
@@ -674,6 +690,10 @@ function MenuProvider(handle: Handle<InternalProps, MenuContextValue>): () => Re
       store.setOpen(false, { reason: 'list-navigation', event })
       return
     }
+
+    // In a menubar, Left / Right that no submenu used move to the adjacent menu.
+    let menubarOfTree = menu.root._menubar
+    if (vertical && step !== 0 && menubarOfTree?._onPopupArrow(menu.root, step, event)) return
 
     let move = getRovingMove(key, vertical ? 'vertical' : 'horizontal', dir)
     if (move) {
@@ -819,14 +839,17 @@ function MenuProvider(handle: Handle<InternalProps, MenuContextValue>): () => Re
     _contextAnchor: null,
     _contextFocus: null,
     _contextArea: null,
+    _menubar: menubar,
   }
 
   parent?._addChild(menu, handle.signal)
+  menubar?._register(menu, handle.signal)
   handle.context.set(menu)
   handle.signal.addEventListener('abort', () => clearTimeout(typedTimer))
 
   return () => {
     store.sync()
+    menubar?._sync()
     if (!store.open) {
       highlighted = null
       pendingFocus = null
@@ -877,9 +900,11 @@ export const trigger: MixinFactory<HTMLElement, [options?: MenuTriggerOptions], 
   createMixin<HTMLElement, [options?: MenuTriggerOptions], ElementProps>((handle, hostType) => {
     let menu = getMenu(handle)
     let store = menu.store
+    let menubar = menu._menubar
     let popupTrigger = createPopupTrigger(handle, hostType, store, { haspopup: 'menu' })
 
     function onKeyDown(event: KeyboardEvent) {
+      if (menubar && !popupTrigger.entry.disabled && menubar._onTriggerKeyDown(menu, event)) return
       if (popupTrigger.entry.disabled || menu.orientation === 'horizontal') return
       if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return
       event.preventDefault()
@@ -900,15 +925,28 @@ export const trigger: MixinFactory<HTMLElement, [options?: MenuTriggerOptions], 
       let id = typeof props.id === 'string' ? props.id : handle.id
       menu._setTriggerId(popupTrigger.entry, id)
       let open = store.open && store.isActiveTrigger(popupTrigger.entry)
+      let disabled = (opts.disabled ?? menu.disabled) || (menubar?.disabled ?? false)
       return [
         attrs({ id, 'data-pressed': open ? '' : undefined }),
+        // Inside a menubar the trigger is a menubar item with a roving tab stop. Rendered before
+        // the generic trigger attributes so `role` and `tabIndex` take precedence.
+        menubar &&
+          attrs({
+            role: 'menuitem',
+            tabIndex: disabled ? undefined : menubar._isTabbable(menu) ? 0 : -1,
+          }),
         popupTrigger.render({
-          disabled: opts.disabled ?? menu.disabled,
+          disabled,
           openOnHover: opts.openOnHover,
           delay: opts.delay ?? 100,
           closeDelay: opts.closeDelay,
         }),
         on<HTMLElement, 'keydown'>('keydown', onKeyDown),
+        menubar && on<HTMLElement, 'focus'>('focus', () => menubar._setActive(menu)),
+        menubar &&
+          on<HTMLElement, 'pointerenter'>('pointerenter', (event) => {
+            if (!disabled) menubar._onTriggerHover(menu, event)
+          }),
       ]
     }
   })
@@ -919,16 +957,33 @@ const DEFAULT_PLACEMENT: Record<MenuKind, Pick<PopupSurfaceOptions, 'side' | 'al
   'context-menu': { side: 'bottom', align: 'start' },
 }
 
+// Menus of a menubar line up with their trigger's start edge (below, or beside when vertical).
+const MENUBAR_PLACEMENT: Pick<PopupSurfaceOptions, 'side' | 'align'> = {
+  side: 'bottom',
+  align: 'start',
+}
+const MENUBAR_VERTICAL_PLACEMENT: Pick<PopupSurfaceOptions, 'side' | 'align'> = {
+  side: 'inline-end',
+  align: 'start',
+}
+
 export const popup: MixinFactory<HTMLElement, [options?: MenuPopupOptions], ElementProps> =
   createMixin<HTMLElement, [options?: MenuPopupOptions], ElementProps>((handle) => {
     let menu = getMenu(handle)
     let surface = createPopupSurface(handle, menu.store)
     let contextAnchor = () => menu._contextAnchor
+    let menubar = menu._menubar
+    // While switching between menubar menus, the closing menu keeps focus where the switch put it.
+    let menubarFinalFocus = () => !menubar?._otherOpen(menu)
 
     return (options, props) => {
       ;[options, props] = splitOptions(options, props)
       let opts = options ?? {}
-      let defaults = DEFAULT_PLACEMENT[menu.kind]
+      let defaults = menubar
+        ? menubar.orientation === 'vertical'
+          ? MENUBAR_VERTICAL_PLACEMENT
+          : MENUBAR_PLACEMENT
+        : DEFAULT_PLACEMENT[menu.kind]
       let isContext = menu.root.kind === 'context-menu'
       return [
         attrs({
@@ -944,7 +999,12 @@ export const popup: MixinFactory<HTMLElement, [options?: MenuPopupOptions], Elem
             anchor: opts.anchor ?? (menu.kind === 'context-menu' ? contextAnchor : undefined),
             initialFocus: opts.initialFocus ?? menu._initialFocus,
             finalFocus:
-              opts.finalFocus ?? (menu.kind === 'context-menu' ? menu._finalFocus : undefined),
+              opts.finalFocus ??
+              (menu.kind === 'context-menu'
+                ? menu._finalFocus
+                : menubar
+                  ? menubarFinalFocus
+                  : undefined),
           },
           props,
         ),

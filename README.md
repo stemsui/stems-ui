@@ -6,7 +6,8 @@ Accessible UI for [Remix 3](https://remix.run). Aims for the full surface area o
 Stems owns its whole API: headless primitives written the Remix 3 way (mixins, `Context`, bubbling
 events, native-first markup), with Remix's own `@remix-run/ui` as the style reference.
 
-> Status: Phase 0 (foundations). Not published yet. See [PLAN.md](./PLAN.md).
+> Status: all 37 Base UI components implemented (headless + styled), not published yet. See
+> [PLAN.md](./PLAN.md) for what's left before 1.0.
 
 ## Packages
 
