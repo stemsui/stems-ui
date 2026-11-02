@@ -32,10 +32,9 @@
   "dependencies": {
     "@stemsui/registry": "workspace:*",
     "@tanstack/highlight": "^1.2.0",
-    "clsx": "^2.1.1",
+    "cn": "^0.5.1",
     "marked": "^18.1.2",
     "remix": "^3.1.0",
-    "stems-ui": "workspace:*",
-    "tailwind-merge": "^3.7.0"
+    "stems-ui": "workspace:*"
   }
 }

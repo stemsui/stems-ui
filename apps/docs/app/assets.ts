@@ -20,7 +20,7 @@ export const assets = createAssetServer({
   },
 
   allowFiles: ['app/routes.ts', 'app/**/public/**'],
-  allowPackages: ['remix', 'stems-ui', '@stemsui/registry', 'clsx', 'tailwind-merge'],
+  allowPackages: ['remix', 'stems-ui', '@stemsui/registry', 'cn'],
   denyFiles: ['app/**/*.test.*'],
   sourceMaps: isDevelopment ? 'external' : undefined,
   minify: !isDevelopment,

@@ -240,7 +240,7 @@ them in arbitrary values: `w-(--anchor-width)`, `origin-(--transform-origin)`,
 
 The registry copies component source into your app (`app/ui/*.tsx`), so the most direct way to
 restyle a component is to edit its classes. To adjust one instance, pass `class`: it's merged with
-`cn()` (`tailwind-merge`), so your classes replace conflicting defaults:
+`cn()` from the `cn` package, so your classes replace conflicting defaults:
 
 ```tsx
 <Button class="rounded-full px-6">Save</Button>

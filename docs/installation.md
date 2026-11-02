@@ -36,7 +36,7 @@ In `app/assets.ts`:
 
 ```ts
 allowFiles: ['app/routes.ts', 'app/**/public/**', 'app/ui/**', 'app/lib/**'],
-allowPackages: ['remix', 'stems-ui', 'clsx', 'tailwind-merge'],
+allowPackages: ['remix', 'stems-ui', 'cn'],
 ```
 
 ## 4. Set up Tailwind CSS v4
@@ -99,8 +99,9 @@ and point `@stemsui` at `http://localhost:44100/r/{name}.json` instead.
 npx shadcn add @stemsui/theme @stemsui/dropdown-menu
 ```
 
-This writes `app/ui/dropdown-menu.tsx` and `app/lib/utils.ts`, installs `stems-ui`,
-`clsx`, and `tailwind-merge`, and merges the theme variables into `app/styles/app.css`. The `theme`
+This writes `app/ui/dropdown-menu.tsx` and `app/lib/utils.ts` and installs `stems-ui` and `cn`.
+The `utils.ts` file re-exports `cn`, which joins class names and removes conflicting Tailwind classes.
+The command also merges the theme variables into `app/styles/app.css`. The `theme`
 item also installs `tw-animate-css` and `shadcn` and adds `@import "tw-animate-css"` and
 `@import "shadcn/tailwind.css"`, the same imports `shadcn init` adds, so shadcn's animation and
 `data-*` variant classes work. shadcn rewrites
