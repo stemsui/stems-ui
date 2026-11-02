@@ -8,5 +8,5 @@
       "stems-ui/*": ["../../packages/stems-ui/src/*.ts", "../../packages/stems-ui/src/*.tsx"]
     }
   },
-  "exclude": ["dist", "public"]
+  "exclude": ["dist", "public", "build"]
 }

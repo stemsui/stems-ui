@@ -1,0 +1,16 @@
+{
+  // Static deploy of the docs site + shadcn registry (https://stemsui.com/r/{name}.json).
+  // Build with `pnpm --filter @stemsui/docs build`, deploy with `pnpm --filter @stemsui/docs deploy`.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "stemsui",
+  "compatibility_date": "2026-10-30",
+  "assets": {
+    "directory": "./build/site",
+    "html_handling": "drop-trailing-slash",
+    "not_found_handling": "404-page",
+  },
+  "routes": [
+    { "pattern": "stemsui.com", "custom_domain": true },
+    { "pattern": "www.stemsui.com", "custom_domain": true },
+  ],
+}

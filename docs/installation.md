@@ -85,13 +85,13 @@ and link it in your document `<head>`:
     "hooks": "#app/hooks"
   },
   "registries": {
-    "@stemsui": "https://<registry-host>/r/{name}.json"
+    "@stemsui": "https://stemsui.com/r/{name}.json"
   }
 }
 ```
 
-The registry host is not public yet. For local development, run the docs app
-(`pnpm dev` in this repo) and use `http://localhost:44100/r/{name}.json`.
+To try unreleased components from a local checkout, run the docs app (`pnpm dev` in this repo)
+and point `@stemsui` at `http://localhost:44100/r/{name}.json` instead.
 
 ## Add components
 

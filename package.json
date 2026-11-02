@@ -17,7 +17,9 @@
     "changeset": "changeset",
     "release": "pnpm build && changeset publish",
     "test:browser": "remix test --type browser",
-    "test:cross": "pnpm build && remix test --type browser --playwrightConfig ./playwright.cross.config.ts"
+    "test:cross": "pnpm build && remix test --type browser --playwrightConfig ./playwright.cross.config.ts",
+    "build:site": "pnpm build && pnpm --filter @stemsui/docs build",
+    "deploy:site": "pnpm build:site && pnpm --filter @stemsui/docs deploy"
   },
   "devDependencies": {
     "@changesets/cli": "^3.0.3",

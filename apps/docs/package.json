@@ -11,7 +11,10 @@
     "start": "pnpm run css:build && NODE_ENV=production node --import remix/node-tsx server.ts",
     "css:build": "tailwindcss -i ./app/styles/app.css -o ./public/styles.css",
     "css:watch": "tailwindcss -i ./app/styles/app.css -o ./public/styles.css --watch",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build": "pnpm run css:build && NODE_ENV=production node --import remix/node-tsx scripts/prerender.ts",
+    "preview": "wrangler dev --port 8787",
+    "deploy": "wrangler deploy"
   },
   "engines": {
     "node": ">=24.3.0"
@@ -23,7 +26,8 @@
     "shadcn": "^4.23.0",
     "tailwindcss": "^4.3.3",
     "tw-animate-css": "^1.4.0",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "wrangler": "^4.156.0"
   },
   "dependencies": {
     "@stemsui/registry": "workspace:*",
