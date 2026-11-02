@@ -32,6 +32,7 @@
   "dependencies": {
     "@stemsui/registry": "workspace:*",
     "@tanstack/highlight": "^1.2.0",
+    "@tanstack/table-core": "^9.3.1",
     "cn": "^0.5.1",
     "marked": "^18.1.2",
     "remix": "^3.1.0",

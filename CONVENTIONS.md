@@ -168,6 +168,11 @@ Clashes with Remix win, and get documented:
   - styles state through ARIA and data attributes (`aria-expanded:`, `data-highlighted:`), not
     JS-computed classes.
 - Visual target: shadcn/ui's Base UI style. Theme tokens are shadcn's CSS variables.
+- `table` is styling-only native markup. `data-table` is an optional registry integration with
+  `@tanstack/table-core` v9; its Remix adapter lives in `src/lib/data-table.ts`. This is an explicit
+  exception to the Stems-only behavior rule. Keep TanStack out of the headless package.
+- Registry-only components can provide `documentation` in the docs demo entry. Their references
+  live in `docs/components/`, rather than creating a placeholder headless module.
 
 ## Tests
 

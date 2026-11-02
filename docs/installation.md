@@ -39,6 +39,9 @@ allowFiles: ['app/routes.ts', 'app/**/public/**', 'app/ui/**', 'app/lib/**'],
 allowPackages: ['remix', 'stems-ui', 'cn'],
 ```
 
+If you install Data Table, also allow `@tanstack/table-core` and define `process.env.NODE_ENV` for browser compilation.
+See [Data Table](/components/data-table#usage) for the configuration.
+
 ## 4. Set up Tailwind CSS v4
 
 ```sh

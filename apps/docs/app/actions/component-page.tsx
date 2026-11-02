@@ -1,6 +1,6 @@
 import { unsafeHTML, type Handle } from 'remix/component'
 
-import type { ModuleReference, TocEntry } from '../content.ts'
+import type { ModuleReference, RenderedMarkdown, TocEntry } from '../content.ts'
 import { demos } from '../demos/index.ts'
 import { highlightCode } from '../highlight.ts'
 import { routes } from '../routes.ts'
@@ -13,16 +13,25 @@ export interface ComponentPageProps {
   references: ModuleReference[]
   /** Source of `app/demos/public/<name>.tsx`. */
   source: string
+  documentation?: RenderedMarkdown
 }
 
 export function ComponentPage(handle: Handle<ComponentPageProps>) {
   return () => {
-    let { name, references, source } = handle.props
-    let { title, description, behavior, Demo, registryItem = name } = demos[name]!
+    let { name, references, source, documentation } = handle.props
+    let {
+      title,
+      description,
+      behavior,
+      behaviorDescription,
+      Demo,
+      registryItem = name,
+    } = demos[name]!
     let install = `npx shadcn add @stemsui/${registryItem}`
 
     let toc: TocEntry[] = [
       { depth: 2, id: 'installation', html: 'Installation' },
+      ...(documentation?.toc ?? []),
       ...(references.length > 0
         ? [
             { depth: 2, id: 'api-reference', html: 'API reference' },
@@ -96,7 +105,8 @@ export function ComponentPage(handle: Handle<ComponentPageProps>) {
               >
                 setup
               </a>
-              . Behavior: {behavior.length === 0 ? 'none (styling only)' : null}
+              . Behavior:{' '}
+              {behaviorDescription ?? (behavior.length === 0 ? 'none (styling only)' : null)}
               {behavior.map((module, index) => (
                 <>
                   {index > 0 ? ', ' : null}
@@ -108,6 +118,14 @@ export function ComponentPage(handle: Handle<ComponentPageProps>) {
               .
             </p>
           </section>
+
+          {documentation ? (
+            <div
+              class="prose-docs"
+              data-testid="component-documentation"
+              innerHTML={unsafeHTML(documentation.html)}
+            />
+          ) : null}
 
           {references.length > 0 ? (
             <section

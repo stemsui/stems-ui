@@ -37,6 +37,8 @@ import { MenubarDemo } from './public/menubar.tsx'
 import { NavigationMenuDemo } from './public/navigation-menu.tsx'
 import { ScrollAreaDemo } from './public/scroll-area.tsx'
 import { ToolbarDemo } from './public/toolbar.tsx'
+import { TableDemo } from './public/table.tsx'
+import { DataTableDemo } from './public/data-table.tsx'
 
 export interface DemoEntry {
   title: string
@@ -45,6 +47,9 @@ export interface DemoEntry {
   registryItem?: string
   /** Headless module(s) providing the behavior. */
   behavior: string[]
+  /** Reference for styled-only components and optional third-party integrations. */
+  documentation?: string
+  behaviorDescription?: string
   /** A client-entry component rendering the demo. */
   Demo: (handle: Handle) => () => RemixNode
 }
@@ -54,6 +59,21 @@ export interface DemoEntry {
  * Demo modules live in ./public/<key>.tsx and export a `clientEntry` component.
  */
 export const demos: Record<string, DemoEntry> = {
+  table: {
+    title: 'Table',
+    description: 'Styled native table parts for tabular data.',
+    behavior: [],
+    documentation: 'docs/components/table.md',
+    Demo: TableDemo,
+  },
+  'data-table': {
+    title: 'Data Table',
+    description: 'Typed, composable data tables powered by TanStack Table v9.',
+    behavior: [],
+    behaviorDescription: 'TanStack Table v9, with a Remix adapter in the registry',
+    documentation: 'docs/components/data-table.md',
+    Demo: DataTableDemo,
+  },
   'dropdown-menu': {
     title: 'Dropdown Menu',
     description: 'A menu of actions or options, opened from a button.',

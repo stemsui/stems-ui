@@ -30,11 +30,20 @@ export default createController(routes, {
       if (!Object.hasOwn(demos, name)) {
         return new Response('Not Found', { status: 404 })
       }
-      let [references, source] = await Promise.all([
+      let documentationFile = demos[name]!.documentation
+      let [references, source, documentation] = await Promise.all([
         readModuleReferences(demos[name]!.behavior),
         readDemoSource(name),
+        documentationFile ? readMarkdownFile(documentationFile, { dropTitle: true }) : undefined,
       ])
-      return context.render(<ComponentPage name={name} references={references} source={source} />)
+      return context.render(
+        <ComponentPage
+          name={name}
+          references={references}
+          source={source}
+          documentation={documentation}
+        />,
+      )
     },
     async guide(context) {
       let slug = context.params.slug

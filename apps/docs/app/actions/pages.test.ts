@@ -36,6 +36,10 @@ describe('component pages', () => {
       assert.match(html, /id="demo-source"/)
       assert.ok(html.includes(`npx shadcn add @stemsui/${demo.registryItem ?? name}`))
       if (demo.behavior.length > 0) assert.match(html, /data-testid="reference"/)
+      if (demo.documentation) {
+        assert.match(html, /data-testid="component-documentation"/)
+        assert.ok(html.includes(firstSection(path.join(repoRoot, demo.documentation))))
+      }
       for (let module of demo.behavior) {
         let id = module.replace('stems-ui/', '')
         assert.ok(html.includes(`data-module="${module}"`), `${module} reference`)

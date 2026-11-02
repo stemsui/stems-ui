@@ -193,6 +193,9 @@ importers:
       '@tanstack/highlight':
         specifier: ^1.2.0
         version: 1.2.0
+      '@tanstack/table-core':
+        specifier: ^9.3.1
+        version: 9.3.1
       cn:
         specifier: ^0.5.1
         version: 0.5.1
@@ -233,6 +236,9 @@ importers:
 
   packages/registry:
     devDependencies:
+      '@tanstack/table-core':
+        specifier: ^9.3.1
+        version: 9.3.1
       '@types/node':
         specifier: ^26.6.6
         version: 26.6.6
@@ -1941,6 +1947,13 @@ packages:
   '@tanstack/highlight@1.2.0':
     resolution: {integrity: sha512-rC9pPLrZXW6Col4ugZlx6EHfIcrx8p6geKkYdTWH1XFAZ2xTYDIIHoxo0QhqZPBEfrWQobkm8dEVrjW0V9r5YA==}
     engines: {node: '>=18'}
+
+  '@tanstack/store@0.11.2':
+    resolution: {integrity: sha512-sJ4mjol8uQsHV0gOJzzjwXfh2Fwm+Sz0+8deqiTm4jGbMdjzNSW+xZCFm0kUa870uhd8yi+DpKnZb5Kc4apa0Q==}
+
+  '@tanstack/table-core@9.3.1':
+    resolution: {integrity: sha512-zQvlxSNi2qGM3L4jh85Z6hqMfdIR5qOfD9KHOU32nuKFJGN0RlJ7UvV1lsPb1fPVhpFYI0VP3jJGxLdLDpTKjQ==}
+    engines: {node: '>=20'}
 
   '@ts-morph/common@0.27.0':
     resolution: {integrity: sha512-Wf29UqxWDpc+i61k3oIOzcUfQt79PIT9y/MWfAGlrkjg6lBC1hwDECLXPVJAhWjiGbfBCxZd65F/LIZF3+jeJQ==}
@@ -4696,6 +4709,12 @@ snapshots:
       '@tailwindcss/oxide-win32-x64-msvc': 4.3.3
 
   '@tanstack/highlight@1.2.0': {}
+
+  '@tanstack/store@0.11.2': {}
+
+  '@tanstack/table-core@9.3.1':
+    dependencies:
+      '@tanstack/store': 0.11.2
 
   '@ts-morph/common@0.27.0':
     dependencies:

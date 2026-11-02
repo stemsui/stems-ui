@@ -16,6 +16,7 @@
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
+    "@tanstack/table-core": "^9.3.1",
     "@types/node": "^26.6.6",
     "cn": "^0.5.1",
     "remix": "^3.1.0",

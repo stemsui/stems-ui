@@ -9,6 +9,10 @@ write idiomatic Remix 3 components (mixins, `Context`, bubbling events, native-f
 markup) and, where useful, port its MIT-licensed code with attribution. The only runtime
 dependency is Remix's component model (`@remix-run/component`).
 
+The optional styled `data-table` registry item adds TanStack Table v9 and a copied Remix adapter.
+This integration does not add a dependency to the `stems-ui` headless package. The `table` item
+provides native table styling without TanStack.
+
 > Changed on Nov 1, 2026. The original plan built on `@remix-run/ui` and aimed to shrink
 > as Remix grew. We switched to full ownership because `@remix-run/ui` is unstable (0.x),
 > its APIs have gaps we'd have to wrap anyway (see `docs/audit.md`), and we want one

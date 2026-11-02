@@ -20,6 +20,9 @@ events, native-first markup), with Remix's own `@remix-run/ui` as the style refe
 Coverage against Base UI is tracked in [`coverage.json`](./coverage.json); the evidence behind it is
 in [`docs/audit.md`](./docs/audit.md).
 
+The registry also includes a styled [Table](./docs/components/table.md) and a
+[Data Table](./docs/components/data-table.md) powered by TanStack Table v9, without React.
+
 ## Using it
 
 See [docs/installation.md](./docs/installation.md). In short, after a one-time setup:

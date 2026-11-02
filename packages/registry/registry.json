@@ -4,6 +4,34 @@
   "homepage": "https://github.com/stemsui/stems-ui",
   "items": [
     {
+      "name": "table",
+      "type": "registry:ui",
+      "title": "Table",
+      "description": "Styled native table, header, body, footer, row, cell, and caption parts.",
+      "registryDependencies": ["@stemsui/utils"],
+      "files": [{ "path": "src/ui/table.tsx", "type": "registry:ui" }]
+    },
+    {
+      "name": "data-table",
+      "type": "registry:ui",
+      "title": "Data Table",
+      "description": "TanStack Table v9 for Remix: typed columns, sorting, filtering, pagination, visibility, selection, and composable controls.",
+      "dependencies": ["@tanstack/table-core@^9.3.1"],
+      "registryDependencies": [
+        "@stemsui/utils",
+        "@stemsui/table",
+        "@stemsui/button",
+        "@stemsui/checkbox",
+        "@stemsui/dropdown-menu",
+        "@stemsui/input",
+        "@stemsui/select"
+      ],
+      "files": [
+        { "path": "src/ui/data-table.tsx", "type": "registry:ui" },
+        { "path": "src/lib/data-table.ts", "type": "registry:lib" }
+      ]
+    },
+    {
       "name": "theme",
       "type": "registry:theme",
       "title": "Stems UI theme",

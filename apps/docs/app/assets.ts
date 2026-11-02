@@ -20,7 +20,7 @@ export const assets = createAssetServer({
   },
 
   allowFiles: ['app/routes.ts', 'app/**/public/**'],
-  allowPackages: ['remix', 'stems-ui', '@stemsui/registry', 'cn'],
+  allowPackages: ['remix', 'stems-ui', '@stemsui/registry', 'cn', '@tanstack/table-core'],
   denyFiles: ['app/**/*.test.*'],
   sourceMaps: isDevelopment ? 'external' : undefined,
   minify: !isDevelopment,
@@ -31,7 +31,10 @@ export const assets = createAssetServer({
         moduleImporter: 'remix/multiple-import-maps-polyfill',
       }
     : undefined,
-  scripts: { loaders: isHmr ? [componentHmr()] : undefined },
+  scripts: {
+    define: { 'process.env.NODE_ENV': JSON.stringify(nodeEnv) },
+    loaders: isHmr ? [componentHmr()] : undefined,
+  },
 })
 
 const entry = 'app/actions/public/entry.ts'
