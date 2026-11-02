@@ -27,7 +27,8 @@ export function Document(handle: Handle<DocumentProps>) {
     let { href, importMap, preloads } = scriptEntry
 
     return (
-      <html lang="en">
+      // The theme class belongs to the browser, not the incoming server-rendered document.
+      <html lang="en" data-rmx-preserve-attrs="class">
         <head>
           <meta charSet="utf-8" />
           <meta name="viewport" content="width=device-width, initial-scale=1" />
