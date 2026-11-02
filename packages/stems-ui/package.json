@@ -1,6 +1,6 @@
 {
   "name": "stems-ui",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Headless, accessible UI primitives for Remix 3",
   "author": "Justin Waite <justindwaite@gmail.com>",
   "license": "MIT",
