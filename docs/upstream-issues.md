@@ -79,3 +79,13 @@ Blocks a real CSP Provider (see `docs/audit.md`). No workaround yet.
 
 With pnpm the harness files are in the repo-root store, so package-level `remix test` fails with
 "Harness scripts … are outside rootDir". **Workaround:** run tests from the repo root.
+
+## 8. `remix test` browser iframes drift below the fold, which stalls WebKit
+
+`remix test` runs each browser test file in an iframe appended to the runner page, under a
+results list that grows as files finish. Finished iframes are hidden, but later ones end up
+below the viewport. WebKit pauses `requestAnimationFrame` in offscreen iframes, so any test that
+waits for a frame stalls until the runner's 90s "no progress" timeout (in our suite, the 22nd
+file). Chromium and Firefox don't throttle same-origin iframes this way. **Workaround:** a very
+tall `viewport` in `playwright.cross.config.ts`. A fix upstream could keep the active iframe
+in view (e.g. `position: fixed`).

@@ -307,9 +307,10 @@ child component's growing array output is inserted after the parent's later sibl
       failures were test artifacts (Firefox's `ClipboardEvent` constructor copies its
       `DataTransfer`; desktop Firefox has no `TouchEvent`), confirmed with real input. The audit
       fixed one real bug: number-field scrubbing without pointer lock.
-- [ ] WebKit/Safari: runs in CI (`cross-browser` job). Locally it needs `libicu74`, `libxml2`,
-      `libflite` (`sudo npx playwright install-deps`). Check native `<dialog>` Escape routing
-      there specifically.
+- [x] WebKit: all 920 browser tests pass (in CI, and locally via Docker `node:26-bookworm` +
+      `playwright install --with-deps webkit`). Real-keyboard check: nested `<dialog>` Escape
+      closes the inner dialog first, alert dialogs ignore backdrop clicks, popover Escape returns
+      focus. The only failure was a `remix test` runner quirk (`docs/upstream-issues.md` §8).
 - [ ] Touch devices and screen readers (VoiceOver, NVDA) for every component.
 - [x] Detached triggers (`createHandle()` + payloads, imperative open/close) for popover,
       dialog, alert dialog, drawer, menu, tooltip, preview card (`lib/popup-handle.ts`).
