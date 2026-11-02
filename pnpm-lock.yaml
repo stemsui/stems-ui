@@ -193,6 +193,9 @@ importers:
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
+      marked:
+        specifier: ^18.1.2
+        version: 18.1.2
       remix:
         specifier: ^3.1.0
         version: 3.1.0(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(playwright@1.64.1)
@@ -2339,6 +2342,11 @@ packages:
   make-dir@4.0.0:
     resolution: {integrity: sha512-hXdUTZYIVOt1Ex//jAQi+wTZZpUpwBj/0QsOzqegb3rGMMeJiSEu5xLHnYfBrRV4RH2+OCSOO95Is/7x1WJ4bw==}
     engines: {node: '>=10'}
+
+  marked@18.1.2:
+    resolution: {integrity: sha512-DfOnvLAQ6WYeWxWO1u4RyFOeqyHup6dks5PPqnoFiooU7ipRvidO/2j8plhAHIiZg574E9ZlzSjUiPMLAzFkgg==}
+    engines: {node: '>= 20'}
+    hasBin: true
 
   merge-stream@2.0.0:
     resolution: {integrity: sha512-abv/qOcuPfk3URPfDzmZU1LKmuw8kT+0nIHvKrKgFrwifol/doWcdA4ZqsWQ8ENrFKkd67Mfpo/LovbIUsbt3w==}
@@ -4592,6 +4600,8 @@ snapshots:
   make-dir@4.0.0:
     dependencies:
       semver: 7.8.5
+
+  marked@18.1.2: {}
 
   merge-stream@2.0.0: {}
 
