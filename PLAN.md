@@ -303,9 +303,14 @@ child component's growing array output is inserted after the parent's later sibl
 
 ### Phase 5: 1.0
 
-- [ ] Cross-browser pass: Firefox and Safari (native `<dialog>` Escape routing, pointer lock
-      scrubbing, popover API, `hidden="until-found"`), touch devices, screen readers (VoiceOver,
-      NVDA) for every component.
+- [x] Firefox: all 878 browser tests pass (`pnpm test:cross` / `-p firefox`). The 6 initial
+      failures were test artifacts (Firefox's `ClipboardEvent` constructor copies its
+      `DataTransfer`; desktop Firefox has no `TouchEvent`), confirmed with real input. The audit
+      fixed one real bug: number-field scrubbing without pointer lock.
+- [ ] WebKit/Safari: runs in CI (`cross-browser` job). Locally it needs `libicu74`, `libxml2`,
+      `libflite` (`sudo npx playwright install-deps`). Check native `<dialog>` Escape routing
+      there specifically.
+- [ ] Touch devices and screen readers (VoiceOver, NVDA) for every component.
 - [ ] Close high-value `openGaps`: detached triggers / `createHandle`, drawer snap points,
       filterable menu, `eventDetails` everywhere, select/menu server HTML labels.
 - [ ] Report `docs/upstream-issues.md` to Remix; drop workarounds as fixes land. CSP Provider

@@ -36,3 +36,23 @@ jobs:
       # Builds stems-ui, the registry JSON, and the docs CSS, then runs server, browser, and e2e tests.
       - name: Test
         run: pnpm test
+
+  cross-browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps firefox webkit
+
+      - name: Browser tests in Firefox and WebKit
+        run: pnpm test:cross

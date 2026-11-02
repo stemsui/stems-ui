@@ -16,7 +16,8 @@
     "format:check": "prettier --check .",
     "changeset": "changeset",
     "release": "pnpm build && changeset publish",
-    "test:browser": "remix test --type browser"
+    "test:browser": "remix test --type browser",
+    "test:cross": "pnpm build && remix test --type browser --playwrightConfig ./playwright.cross.config.ts"
   },
   "devDependencies": {
     "@changesets/cli": "^3.0.3",

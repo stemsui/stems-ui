@@ -507,29 +507,41 @@ function NumberFieldProvider(
       if (isInert() || event.button !== 0) return
       event.preventDefault()
       let locked = false
+      let pointerId = event.pointerId
+      let session: ScrubSession | undefined
+      function capture() {
+        try {
+          node.setPointerCapture(pointerId)
+        } catch {
+          // Synthetic pointers (and pointers already released) can't be captured.
+        }
+      }
       if (event.pointerType !== 'touch' && !isSafari() && 'requestPointerLock' in node) {
         try {
+          let doc = node.ownerDocument
+          // The lock can be refused asynchronously: a rejected promise (current engines) or a
+          // `pointerlockerror` event (engines whose `requestPointerLock()` returns undefined).
+          // Fall back to pointer capture so moves and the release outside the area still arrive.
+          let refused = () => {
+            doc.removeEventListener('pointerlockerror', refused)
+            if (!session || scrub !== session || !session.locked) return
+            session.locked = false
+            capture()
+            void handle.update()
+          }
+          doc.addEventListener('pointerlockerror', refused)
+          let settled = () => doc.removeEventListener('pointerlockerror', refused)
+          doc.addEventListener('pointerlockchange', settled, { once: true })
           let result = node.requestPointerLock() as unknown
           locked = true
-          if (result instanceof Promise) {
-            result.catch(() => {
-              if (scrub) scrub.locked = false
-              void handle.update()
-            })
-          }
+          if (result instanceof Promise) result.then(settled, refused)
         } catch {
           locked = false
         }
       }
-      if (!locked) {
-        try {
-          node.setPointerCapture(event.pointerId)
-        } catch {
-          // Synthetic pointers can't be captured.
-        }
-      }
-      scrub = {
-        pointerId: event.pointerId,
+      if (!locked) capture()
+      scrub = session = {
+        pointerId,
         locked,
         accumulated: 0,
         x: event.clientX,

@@ -246,6 +246,11 @@ describe('number-field', () => {
         cancelable: true,
         clipboardData: data,
       })
+      // Firefox copies `clipboardData` from the init dictionary into a new, empty DataTransfer
+      // for script-created events (real pastes carry the clipboard). Expose the populated one.
+      if (event.clipboardData?.getData('text/plain') !== text) {
+        Object.defineProperty(event, 'clipboardData', { value: data })
+      }
       input.dispatchEvent(event)
       return event
     }
@@ -438,6 +443,40 @@ describe('number-field', () => {
     await act(() => pointer(area, 'pointerup', { pointerType: 'touch' }))
     expect(root.hasAttribute('data-scrubbing')).toBe(false)
     expect(commits).toEqual([[12, 'scrub']])
+  })
+
+  it('falls back to pointer capture when the pointer lock is refused', async (t) => {
+    let { act, container, cleanup } = render(<Field scrub defaultValue={10} />)
+    t.after(cleanup)
+    let { input } = parts(container)
+    let area = container.querySelector('#scrub') as HTMLElement
+    let cursor = container.querySelector('#cursor') as HTMLElement
+    let captured: number[] = []
+    area.setPointerCapture = (id: number) => void captured.push(id)
+    area.hasPointerCapture = () => false
+
+    // A rejected promise (current engines).
+    area.requestPointerLock = () =>
+      Promise.reject(new DOMException('refused', 'NotAllowedError')) as never
+    await act(() => pointer(area, 'pointerdown', { clientX: 50, clientY: 50 }))
+    await act(() => wait(0))
+    expect(captured).toEqual([1])
+    expect(cursor.hidden).toBe(true)
+    await act(() => pointer(area, 'pointermove', { movementX: 4 }))
+    expect(input.value).toBe('12')
+    await act(() => pointer(area, 'pointerup'))
+
+    // `undefined` plus a `pointerlockerror` event (engines without the promise).
+    captured = []
+    area.requestPointerLock = (() => {
+      queueMicrotask(() => document.dispatchEvent(new Event('pointerlockerror')))
+    }) as never
+    await act(() => pointer(area, 'pointerdown', { clientX: 50, clientY: 50 }))
+    await act(() => wait(0))
+    expect(captured).toEqual([1])
+    expect(cursor.hidden).toBe(true)
+    await act(() => pointer(area, 'pointerup'))
+    expect(input.value).toBe('12')
   })
 
   it('supports controlled values and cancel()', async (t) => {

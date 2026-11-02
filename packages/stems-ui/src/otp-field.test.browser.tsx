@@ -25,6 +25,11 @@ function paste(slot: HTMLInputElement, text: string) {
   let data = new DataTransfer()
   data.setData('text/plain', text)
   let event = new ClipboardEvent('paste', { bubbles: true, cancelable: true, clipboardData: data })
+  // Firefox copies `clipboardData` from the init dictionary into a new, empty DataTransfer for
+  // script-created events (real pastes carry the clipboard). Expose the populated one.
+  if (event.clipboardData?.getData('text/plain') !== text) {
+    Object.defineProperty(event, 'clipboardData', { value: data })
+  }
   slot.dispatchEvent(event)
   return event
 }

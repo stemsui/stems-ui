@@ -65,6 +65,19 @@ function key(target: Element | null, value: string, init: KeyboardEventInit = {}
   return event
 }
 
+// Desktop browsers without a touchscreen (Firefox, WebKit) don't expose the `TouchEvent`
+// constructor, but still dispatch real `touchend` events on touch devices. The menu only reads
+// `cancelable` and calls `preventDefault()`, which a plain `Event` of the same type supports.
+function touchEnd(target: Element) {
+  let init = { bubbles: true, cancelable: true }
+  let event =
+    typeof TouchEvent === 'function'
+      ? new TouchEvent('touchend', init)
+      : new Event('touchend', init)
+  target.dispatchEvent(event)
+  return event
+}
+
 function touch(target: Element, type: string, x = 120, y = 90) {
   target.dispatchEvent(
     new PointerEvent(type, { bubbles: true, pointerType: 'touch', clientX: x, clientY: y }),
@@ -210,15 +223,13 @@ describe('context menu', () => {
     // Lifting the finger cancels the compatibility mouse events and click, so focus stays in
     // the menu and the release isn't an outside press.
     touch(area, 'pointerup')
-    let release = new TouchEvent('touchend', { bubbles: true, cancelable: true })
-    area.dispatchEvent(release)
+    let release = touchEnd(area)
     expect(release.defaultPrevented).toBe(true)
     await act(() => {})
     expect(isShown(popup)).toBe(true)
 
     // A later touchend (a normal tap) is left alone.
-    let tap = new TouchEvent('touchend', { bubbles: true, cancelable: true })
-    area.dispatchEvent(tap)
+    let tap = touchEnd(area)
     expect(tap.defaultPrevented).toBe(false)
   })
 
