@@ -169,3 +169,86 @@ describe('menu (server render)', () => {
     expect(popup).toContain('data-align="start"')
   })
 })
+
+describe('menu detached triggers (server render)', () => {
+  it('renders a detached trigger closed and the payload function', async () => {
+    let h = menu.createHandle<string>()
+    let html = await renderToString(
+      <div>
+        <button id="row-1" mix={menu.trigger({ handle: h, payload: 'row-1' })}>
+          Detached
+        </button>
+        <menu.Context handle={h}>
+          {({ payload }) => (
+            <div class="popup" mix={menu.popup()}>
+              <div mix={menu.item()}>Edit {payload ?? 'none'}</div>
+            </div>
+          )}
+        </menu.Context>
+      </div>,
+    )
+    let trigger = getTag(html, /<button[^>]*>Detached/)
+    expect(trigger).toContain('aria-haspopup="menu"')
+    expect(trigger).toContain('aria-expanded="false"')
+    expect(trigger).toContain('id="row-1"')
+    expect(trigger).not.toContain('data-popup-open')
+    expect(trigger).not.toContain('data-pressed')
+    expect(html).toContain('Edit none')
+  })
+})
+
+describe('menu filtering (server render)', () => {
+  it('renders a filterable menu as a dialog with a searchbox and a menu list', async () => {
+    let html = await renderToString(
+      <menu.FilterProvider defaultValue="re">
+        <menu.Context>
+          <button class="trigger" mix={menu.trigger()}>
+            Actions
+          </button>
+          <div class="popup" mix={menu.popup()}>
+            <input class="input" aria-label="Filter" mix={menu.input()} />
+            <button class="clear" mix={menu.clear()}>
+              Clear
+            </button>
+            <div class="empty" mix={menu.empty()}>
+              <menu.EmptyText>No results.</menu.EmptyText>
+            </div>
+            <div class="list" mix={menu.list()}>
+              <div class="item" mix={menu.item()}>
+                Rename
+              </div>
+            </div>
+          </div>
+        </menu.Context>
+      </menu.FilterProvider>,
+    )
+    expect(getTag(html, /<button[^>]*class="trigger"[^>]*>/)).toContain('aria-haspopup="dialog"')
+    expect(getTag(html, /<div[^>]*class="popup"[^>]*>/)).toContain('role="dialog"')
+    let list = getTag(html, /<div[^>]*class="list"[^>]*>/)
+    expect(list).toContain('role="menu"')
+    expect(list).toMatch(/id="[^"]+-list"/)
+    let input = getTag(html, /<input[^>]*>/)
+    expect(input).toContain('role="searchbox"')
+    expect(input).toContain('value="re"')
+    expect(input).toContain('autocomplete="off"')
+    expect(getTag(html, /<button[^>]*class="clear"[^>]*>/)).not.toMatch(/\shidden/)
+    let empty = getTag(html, /<div[^>]*class="empty"[^>]*>/)
+    expect(empty).toContain('role="status"')
+    expect(empty).not.toContain('data-empty')
+    expect(html).not.toContain('No results.')
+  })
+
+  it('renders list() as a plain wrapper without a FilterProvider', async () => {
+    let html = await renderToString(
+      <menu.Context>
+        <div class="popup" mix={menu.popup()}>
+          <div class="list" mix={menu.list()}>
+            <div mix={menu.item()}>Item</div>
+          </div>
+        </div>
+      </menu.Context>,
+    )
+    expect(getTag(html, /<div[^>]*class="popup"[^>]*>/)).toContain('role="menu"')
+    expect(getTag(html, /<div[^>]*class="list"[^>]*>/)).toContain('role="presentation"')
+  })
+})

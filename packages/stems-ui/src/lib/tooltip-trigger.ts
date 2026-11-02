@@ -20,7 +20,9 @@
 import { attrs, on } from '@remix-run/component'
 import type { ElementProps, MixInput, MixinHandle } from '@remix-run/component'
 
+import { setTriggerPayload } from './popup.ts'
 import type { PopupStore, PopupTriggerEntry } from './popup.ts'
+import { writeAttributes } from './popup-handle.ts'
 
 export interface HintTriggerSettings {
   /** Hover-open delay in ms (already resolved against a delay group). */
@@ -37,15 +39,22 @@ export interface HintTriggerSettings {
   hoverablePopup: boolean
   /** Report pointer moves over the trigger (for cursor tracking). */
   trackPointer: boolean
+  /** The trigger's `payload` (`store.payload` while it's the active trigger). */
+  payload?: unknown
 }
 
 export interface HintTriggerHooks {
   /** Called with `pointerenter` / `pointermove` events while `trackPointer` is set. */
   onPointer?(event: PointerEvent): void
+  /** Whether the trigger is detached from its `Context` (`TriggerBinding.detached`). */
+  isDetached?(): boolean
 }
 
 export interface HintTrigger {
+  /** The trigger's registration (registered on first access). */
   readonly entry: PopupTriggerEntry
+  /** Writes `data-popup-open` to the element (for detached triggers). */
+  refresh(): void
   /**
    * Call from the trigger mixin's render function. `getSettings` is read at event time, so a
    * delay group's state is current when the pointer enters.
@@ -59,7 +68,9 @@ export function createHintTrigger(
   hooks: HintTriggerHooks = {},
 ): HintTrigger {
   let signal = handle.signal
-  let entry = store._registerTrigger(signal)
+  // Registered lazily: a detached trigger's handle is only known once its mixin renders.
+  let registered: PopupTriggerEntry | null = null
+  let rendered = false
   let settings: () => HintTriggerSettings
   let focusTimer = 0
   let blurTimer = 0
@@ -74,25 +85,29 @@ export function createHintTrigger(
   }
   signal.addEventListener('abort', clearTimers)
 
+  function ensureEntry() {
+    return (registered ??= store._registerTrigger(signal))
+  }
+
   handle.addEventListener('insert', (event) => {
-    entry.node = event.node
+    ensureEntry().node = event.node
     let win = event.node.ownerDocument.defaultView
     win?.addEventListener(
       'blur',
       () => {
-        let node = entry.node
+        let node = ensureEntry().node
         if (node && !store.open && node.ownerDocument.activeElement === node) blockFocus = true
       },
       { signal },
     )
   })
   handle.addEventListener('remove', () => {
-    entry.node = null
+    if (registered) registered.node = null
     clearTimers()
   })
 
   function isActive() {
-    return store.open && store.isActiveTrigger(entry)
+    return store.open && store.isActiveTrigger(ensureEntry())
   }
 
   function pressClose(event: Event) {
@@ -103,19 +118,19 @@ export function createHintTrigger(
     store._setInteractionType(
       event instanceof MouseEvent && event.detail === 0 ? 'keyboard' : 'mouse',
     )
-    store.setOpen(false, { reason: 'trigger-press', event, trigger: entry.node })
+    store.setOpen(false, { reason: 'trigger-press', event, trigger: ensureEntry().node })
   }
 
   function onPointerEnter(event: PointerEvent) {
     if (event.pointerType === 'touch') return
     clearTimeout(closeTimer)
     let current = settings()
-    let node = entry.node
+    let node = ensureEntry().node
     if (current.disabled || !node) return
     if (current.trackPointer) hooks.onPointer?.(event)
-    if (store.open && !store.isActiveTrigger(entry)) {
+    if (store.open && !store.isActiveTrigger(ensureEntry())) {
       // Base UI: hovering another trigger of an open hint moves the popup to it.
-      store._activateTrigger(entry)
+      store._activateTrigger(ensureEntry())
       void store.update()
     }
     store.hover.triggerEnter(event, node, { delay: current.delay, closeDelay: current.closeDelay })
@@ -143,20 +158,20 @@ export function createHintTrigger(
 
   function onFocus(event: FocusEvent) {
     let current = settings()
-    let node = entry.node
+    let node = ensureEntry().node
     if (current.disabled || !node || blockFocus) return
     if (!isFocusVisible(node)) return
     clearTimeout(blurTimer)
     if (store.open) {
-      if (!store.isActiveTrigger(entry)) {
-        store._activateTrigger(entry)
+      if (!store.isActiveTrigger(ensureEntry())) {
+        store._activateTrigger(ensureEntry())
         void store.update()
       }
       return
     }
     let open = () => {
       focusTimer = 0
-      let target = entry.node
+      let target = ensureEntry().node
       if (!target || blockFocus || settings().disabled || store.open) return
       if (target.ownerDocument.activeElement !== target) return
       store._setInteractionType('keyboard')
@@ -175,7 +190,7 @@ export function createHintTrigger(
     // Wait for the window `blur` listener and for focus to land.
     blurTimer = window.setTimeout(() => {
       blurTimer = 0
-      let node = entry.node
+      let node = ensureEntry().node
       if (!node || !isActive()) return
       let active = node.ownerDocument.activeElement
       // Focus left the page (window blur): keep it open.
@@ -187,11 +202,26 @@ export function createHintTrigger(
   }
 
   return {
-    entry,
+    get entry() {
+      return ensureEntry()
+    },
+    refresh() {
+      let node = registered?.node
+      if (node) writeAttributes(node, { 'data-popup-open': isActive() ? '' : undefined })
+    },
     render(getSettings) {
       settings = getSettings
       let current = getSettings()
-      entry.disabled = current.disabled
+      let own = ensureEntry()
+      own.disabled = current.disabled
+      setTriggerPayload(
+        handle,
+        store,
+        own,
+        current.payload,
+        !rendered || (hooks.isDetached?.() ?? false),
+      )
+      rendered = true
       if (current.disabled) {
         clearTimeout(focusTimer)
         focusTimer = 0

@@ -69,3 +69,27 @@ describe('preview-card (server render)', () => {
     expect(popup).toContain('data-align="center"')
   })
 })
+
+describe('preview card detached triggers (server render)', () => {
+  it('renders a detached trigger closed and the payload function', async () => {
+    let h = previewCard.createHandle<string>()
+    let html = await renderToString(
+      <div>
+        <a href="/ada" mix={previewCard.trigger({ handle: h, payload: 'Ada' })}>
+          Detached
+        </a>
+        <previewCard.Context handle={h}>
+          {({ payload }) => (
+            <div class="popup" mix={previewCard.popup()}>
+              card:{payload ?? 'none'}
+            </div>
+          )}
+        </previewCard.Context>
+      </div>,
+    )
+    let trigger = getTag(html, /<a[^>]*>Detached/)
+    expect(trigger).toContain('href="/ada"')
+    expect(trigger).not.toContain('data-popup-open')
+    expect(html).toContain('card:none')
+  })
+})

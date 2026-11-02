@@ -35,6 +35,13 @@ import {
   type DialogInteractionType,
 } from './dialog-focus.ts'
 import { isTopDismissLayer, registerDismissLayer } from './dismiss-layer.ts'
+import {
+  createPopupHandle,
+  createTriggerBinding,
+  resolvePayloadChildren,
+  writeAttributes,
+} from './popup-handle.ts'
+import type { PopupHandle, PopupHandleController, PopupPayloadChildren } from './popup-handle.ts'
 import { createPresence } from './presence.ts'
 import { lockScroll } from './scroll-lock.ts'
 
@@ -80,8 +87,40 @@ export interface DialogActions {
   close(): void
 }
 
-export interface DialogRootProps {
-  children?: RemixNode
+/**
+ * Links a dialog `Context` (dialog, alert dialog, or drawer) with triggers rendered outside it
+ * (Base UI's `Dialog.Handle`): `isOpen`, `open(triggerId?)`, `openWithPayload(payload)`,
+ * `close()`. Calls made while no `Context` is attached are ignored.
+ */
+export interface DialogHandle<Payload = unknown> extends PopupHandle<Payload, 'dialog'> {
+  /** Opens the dialog with `payload`, not associated with any trigger. */
+  openWithPayload(payload: Payload): void
+}
+
+export function createDialogHandle<Payload = unknown>(): DialogHandle<Payload> {
+  let popupHandle = createPopupHandle<Payload, 'dialog'>('dialog')
+  return Object.assign(popupHandle, {
+    openWithPayload(payload: Payload) {
+      popupHandle._state.controller?.openWithPayload?.(payload)
+    },
+  })
+}
+
+export interface DialogRootProps<Payload = unknown> {
+  /**
+   * Nodes, or a function of `{ payload }` (the active trigger's `payload`, or the one given to
+   * `handle.openWithPayload()`), re-run whenever the root renders.
+   */
+  children?: PopupPayloadChildren<RemixNode, Payload>
+  /** Connects triggers rendered outside the `Context` (`trigger({ handle })`). Read once. */
+  handle?: DialogHandle<Payload>
+  /**
+   * The `id` of the active trigger (controlled): the one focus returns to and the `payload`
+   * comes from. Pair it with `open`; read the trigger from `details.trigger` in `onOpenChange`.
+   */
+  triggerId?: string | null
+  /** The `id` of the initially active trigger (with `defaultOpen`). */
+  defaultTriggerId?: string | null
   /** Whether the dialog is open (controlled). */
   open?: boolean
   /**
@@ -109,6 +148,8 @@ export interface DialogRootProps {
 
 /** @internal Props only the stems modules pass. */
 export interface DialogRootInternalProps extends DialogRootProps {
+  /** The wrapper's `children` (possibly a payload render function). */
+  _children?: DialogRootProps['children']
   _kind?: DialogKind
   _createEvent?: (open: boolean, reason: DialogChangeReason) => Event
 }
@@ -129,6 +170,8 @@ export interface DialogRootContextValue {
   readonly popupNode: HTMLDialogElement | null
   /** The trigger that last opened the dialog. */
   readonly activeTrigger: HTMLElement | null
+  /** The active trigger's `payload` (or the one given to `handle.openWithPayload()`). */
+  readonly payload: unknown
   /** How the dialog was last opened. */
   readonly interaction: DialogInteractionType
   /** Depth of the chain of open dialogs nested inside this one (optionally of one kind). */
@@ -143,6 +186,8 @@ export interface DialogRootContextValue {
   _setPopup(node: HTMLDialogElement | null): void
   /** @internal */
   _register(kind: 'trigger' | 'backdrop', node: HTMLElement, signal: AbortSignal): void
+  /** @internal Records a trigger's payload; returns whether it changed. */
+  _setPayload(node: HTMLElement, payload: unknown): boolean
   /** @internal */
   _registerLabel(kind: 'title' | 'description', id: string, signal: AbortSignal): void
   /** @internal */
@@ -168,7 +213,12 @@ export function DialogRoot(
   let parent = (handle.context.get(DialogRoot) as DialogRootContextValue | undefined) ?? null
   let signal = handle.signal
   let children = new Set<DialogRootContextValue>()
-  let nodes = { trigger: new Set<HTMLElement>(), backdrop: new Set<HTMLElement>() }
+  let popupHandle = handle.props.handle
+  let defaultTriggerId = handle.props.defaultTriggerId ?? null
+  // With a handle, triggers register with the handle so detached ones are seen too.
+  let registry = getTriggerRegistry(popupHandle)
+  let payloadOverride: { value: unknown } | null = null
+  let nodes = { trigger: registry.nodes, backdrop: new Set<HTMLElement>() }
   let labels = {
     title: { id: `${handle.id}-title`, count: 0 },
     description: { id: `${handle.id}-description`, count: 0 },
@@ -187,6 +237,21 @@ export function DialogRoot(
 
   function kind(): DialogKind {
     return handle.props._kind ?? 'dialog'
+  }
+
+  function findTrigger(id: string) {
+    for (let node of nodes.trigger) if (node.id === id) return node
+    return null
+  }
+
+  function currentTrigger(): HTMLElement | null {
+    let controlledId = handle.props.triggerId
+    if (controlledId != null) {
+      let node = findTrigger(controlledId)
+      if (node) return node
+    }
+    if (activeTrigger) return activeTrigger
+    return defaultTriggerId != null ? findTrigger(defaultTriggerId) : null
   }
 
   function scheduleUpdate() {
@@ -228,7 +293,12 @@ export function DialogRoot(
       return popupNode
     },
     get activeTrigger() {
-      return activeTrigger
+      return currentTrigger()
+    },
+    get payload() {
+      if (payloadOverride) return payloadOverride.value
+      let trigger = currentTrigger()
+      return trigger ? registry.payloads.get(trigger) : undefined
     },
     get interaction() {
       return interaction
@@ -248,7 +318,7 @@ export function DialogRoot(
       let details: DialogChangeDetails = {
         reason,
         event,
-        trigger: trigger ?? activeTrigger ?? undefined,
+        trigger: trigger ?? currentTrigger() ?? undefined,
         cancel() {
           canceled = true
         },
@@ -259,7 +329,11 @@ export function DialogRoot(
       handle.props.onOpenChange?.(open, details)
       if (canceled) return false
 
-      if (open) activeTrigger = trigger ?? null
+      if (open) {
+        activeTrigger = trigger ?? null
+        defaultTriggerId = null
+        if (trigger) payloadOverride = null
+      }
       if (handle.props.open === undefined) {
         uncontrolledOpen = open
         void handle.update()
@@ -282,6 +356,13 @@ export function DialogRoot(
     _register(kind, node, nodeSignal) {
       nodes[kind].add(node)
       nodeSignal.addEventListener('abort', () => nodes[kind].delete(node), { once: true })
+    },
+    _setPayload(node, payload) {
+      if (registry.payloads.has(node) && Object.is(registry.payloads.get(node), payload)) {
+        return false
+      }
+      registry.payloads.set(node, payload)
+      return true
     },
     _registerLabel(kind, id, labelSignal) {
       let label = labels[kind]
@@ -340,6 +421,39 @@ export function DialogRoot(
   parent?._addChild(store, signal)
   handle.context.set(store)
 
+  if (popupHandle) {
+    let controller: PopupHandleController = {
+      get isOpen() {
+        return isOpen()
+      },
+      open(triggerId) {
+        let node = triggerId == null ? null : findTrigger(triggerId)
+        payloadOverride = null
+        if (isOpen()) {
+          if (node && node !== currentTrigger()) {
+            activeTrigger = node
+            void handle.update()
+          }
+          return
+        }
+        store.setOpen(true, 'imperative-action', undefined, node ?? undefined)
+      },
+      openWithPayload(payload) {
+        let previous = payloadOverride
+        payloadOverride = { value: payload }
+        if (isOpen()) {
+          void handle.update()
+          return
+        }
+        if (!store.setOpen(true, 'imperative-action')) payloadOverride = previous
+      },
+      close() {
+        store.setOpen(false, 'imperative-action')
+      },
+    }
+    popupHandle._state.attach(store, controller, signal)
+  }
+
   signal.addEventListener('abort', () => {
     let ref = handle.props.actionsRef
     if (ref?.current === actions) ref.current = null
@@ -353,8 +467,51 @@ export function DialogRoot(
       handle.queueTask(() => parent._nestedChanged())
     }
     lastOpen = open
-    return handle.props.children
+    // Detached triggers aren't re-rendered by the root; let them refresh.
+    popupHandle?._state.notify()
+    let children = handle.props._children ?? handle.props.children
+    return resolvePayloadChildren(children, store.payload)
   }
+}
+
+interface TriggerRegistry {
+  nodes: Set<HTMLElement>
+  payloads: WeakMap<HTMLElement, unknown>
+}
+
+function getTriggerRegistry(popupHandle: DialogHandle<any> | undefined): TriggerRegistry {
+  let init = (): TriggerRegistry => ({ nodes: new Set(), payloads: new WeakMap() })
+  return popupHandle ? popupHandle._state.shared('dialog-triggers', init) : init()
+}
+
+// A detached trigger's root while no `Context` is attached: closed and inert, but triggers
+// still register with the handle so the root sees them once it mounts.
+function createDetachedRoot(popupHandle: DialogHandle<any> | undefined): DialogRootContextValue {
+  let registry = getTriggerRegistry(popupHandle)
+  let values: Partial<DialogRootContextValue> = {
+    open: false,
+    activeTrigger: null,
+    popupNode: null,
+    parent: null,
+    popupId: undefined as unknown as string,
+    _register(kind, node, nodeSignal) {
+      if (kind !== 'trigger') return
+      registry.nodes.add(node)
+      nodeSignal.addEventListener('abort', () => registry.nodes.delete(node), { once: true })
+    },
+    _setPayload(node, payload) {
+      registry.payloads.set(node, payload)
+      return false
+    },
+    setOpen: () => false,
+    update: () => Promise.resolve(),
+  }
+  return new Proxy(values as DialogRootContextValue, {
+    get(target, key) {
+      if (key in target) return Reflect.get(target, key)
+      return () => undefined
+    },
+  })
 }
 
 export function getDialogRoot(handle: MixinHandle<any>): DialogRootContextValue {
@@ -393,6 +550,10 @@ export function mergeStyle(vars: Record<string, string>) {
 export interface DialogTriggerOptions {
   /** Whether the trigger ignores presses. */
   disabled?: boolean
+  /** The dialog to control when the trigger is outside its `Context`. Read on first render. */
+  handle?: DialogHandle<any>
+  /** Data for the dialog while this trigger is active (`payload` in the `Context`). */
+  payload?: unknown
 }
 
 export interface DialogCloseOptions {
@@ -450,17 +611,43 @@ export const triggerMixin: MixinFactory<
   [options?: DialogTriggerOptions],
   ElementProps
 > = createMixin<HTMLElement, [options?: DialogTriggerOptions], ElementProps>((handle, hostType) => {
-  let store = getDialogRoot(handle)
+  // Resolves to the attached root of `options.handle`, else the enclosing root.
+  let binding = createTriggerBinding(
+    handle,
+    handle.context.get(DialogRoot) as DialogRootContextValue | undefined,
+    (popupHandle) => createDetachedRoot(popupHandle as DialogHandle<any> | undefined),
+  )
+  let store = binding.context
   let signal = handle.signal
   let isButton = hostType === 'button'
   let node: HTMLElement | null = null
   let disabled = false
   let lastPointer: DialogInteractionType = ''
+  let payload: unknown
+  let rendered = false
 
   handle.addEventListener('insert', (event) => {
     node = event.node
     store._register('trigger', event.node, signal)
+    syncPayload(true)
   })
+
+  function stateAttrs() {
+    let open = store.open
+    let active = open && (store.activeTrigger === null || store.activeTrigger === node)
+    return {
+      'aria-expanded': active ? 'true' : 'false',
+      'aria-controls': store.popupId as string | undefined,
+      'data-popup-open': active ? '' : undefined,
+    }
+  }
+
+  function syncPayload(rerender: boolean) {
+    if (!node || !store._setPayload(node, payload)) return
+    if (rerender && store.open && store.activeTrigger === node) {
+      handle.queueTask(() => void store.update())
+    }
+  }
 
   function press(event: Event, type: DialogInteractionType) {
     if (disabled) return
@@ -471,17 +658,20 @@ export const triggerMixin: MixinFactory<
 
   return (options, props) => {
     ;[options] = splitOptions(options, props)
+    binding.bind(options?.handle, () => {
+      if (node) writeAttributes(node, stateAttrs())
+    })
     disabled = options?.disabled ?? false
-    let open = store.open
-    let active = open && (store.activeTrigger === null || store.activeTrigger === node)
+    payload = options?.payload
+    // Inside the Context only on the first render (see `setTriggerPayload` in lib/popup.ts).
+    syncPayload(!rendered || binding.detached)
+    rendered = true
 
     return [
       attrs({
         ...buttonParts(isButton, disabled),
         'aria-haspopup': 'dialog',
-        'aria-expanded': active ? 'true' : 'false',
-        'aria-controls': store.popupId,
-        'data-popup-open': active ? '' : undefined,
+        ...stateAttrs(),
       }),
       on<HTMLElement, 'pointerdown'>('pointerdown', (event) => {
         lastPointer = pointerType(event.pointerType)

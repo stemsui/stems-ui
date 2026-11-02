@@ -280,7 +280,6 @@
         "styled": "done"
       },
       "openGaps": [
-        "Detached triggers (createHandle)",
         "actionsRef.unmount / preventUnmountOnClose",
         "defaultOpen modal dialogs appear only after hydration (showModal needs JS)",
         "Exit wait ignores ::backdrop animations"
@@ -301,10 +300,10 @@
         "styled": "done"
       },
       "openGaps": [
-        "Snap points (incl. data-expanded)",
-        "SwipeArea (swipe to open)",
-        "--drawer-height",
-        "VirtualKeyboardProvider"
+        "No VirtualKeyboardProvider / Viewport part",
+        "Snap point content below the visible height is not padded",
+        "Swipe area untested with real touch hardware",
+        "actionsRef.unmount / preventUnmountOnClose (as dialog)"
       ]
     },
     {
@@ -333,12 +332,12 @@
         "styled": "done"
       },
       "openGaps": [
-        "Filterable menu (FilterProvider/Input/Clear/Empty/List)",
         "Viewport part",
-        "Detached triggers, payloads, actionsRef, triggerId",
         "Open on pointer-down with press-drag-release",
         "sibling-open / cancel-open reasons",
-        "Group aria-labelledby missing from server HTML"
+        "Group aria-labelledby missing from server HTML",
+        "Filter parts not re-exported from context-menu; trigger does not forward arrows to the filter input",
+        "Filtered menu server HTML shows every item until hydration"
       ]
     },
     {
@@ -367,7 +366,6 @@
       },
       "openGaps": [
         "Viewport part",
-        "Detached triggers (createHandle), payloads",
         "Collision shift/sticky/collisionBoundary/positionMethod",
         "--positioner-*/--popup-* variables, data-instant, data-anchor-hidden"
       ]
@@ -388,7 +386,7 @@
         "headless": "done",
         "styled": "done"
       },
-      "openGaps": ["Detached triggers, payloads", "Inline-rect anchoring for wrapped links"]
+      "openGaps": ["Inline-rect anchoring for wrapped links"]
     },
     {
       "baseUi": "Toast",
@@ -429,7 +427,6 @@
         "styled": "done"
       },
       "openGaps": [
-        "Detached triggers, payloads, triggerId",
         "Viewport part, --positioner-*/--popup-* variables",
         "data-anchor-hidden",
         "Close when the active trigger unmounts"

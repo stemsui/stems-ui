@@ -95,3 +95,46 @@ describe('popover (server render)', () => {
     expect(popup).toContain('data-align="center"')
   })
 })
+
+describe('popover detached triggers (server render)', () => {
+  it('renders a detached trigger closed and the payload function', async () => {
+    let h = popover.createHandle<string>()
+    let html = await renderToString(
+      <div>
+        <button mix={popover.trigger({ handle: h, payload: 'one' })}>Detached</button>
+        <popover.Context handle={h}>
+          {({ payload }) => (
+            <div class="popup" mix={popover.popup()}>
+              payload:{payload ?? 'none'}
+            </div>
+          )}
+        </popover.Context>
+      </div>,
+    )
+    let trigger = getTag(html, /<button[^>]*>Detached/)
+    expect(trigger).toContain('type="button"')
+    expect(trigger).toContain('aria-haspopup="dialog"')
+    expect(trigger).toContain('aria-expanded="false"')
+    expect(trigger).not.toContain('data-popup-open')
+    expect(trigger).not.toContain('aria-controls')
+    expect(html).toContain('payload:none')
+    expect(getTag(html, /<div[^>]*class="popup"[^>]*>/)).toContain('data-closed=""')
+  })
+
+  it('renders an open Context with a payload from a trigger inside it', async () => {
+    let html = await renderToString(
+      <popover.Context defaultOpen>
+        {({ payload }) => (
+          <>
+            <button mix={popover.trigger({ payload: 'inside' })}>Open</button>
+            <div class="popup" mix={popover.popup()}>
+              payload:{String(payload)}
+            </div>
+          </>
+        )}
+      </popover.Context>,
+    )
+    expect(getTag(html, /<button[^>]*>Open/)).toContain('aria-expanded="true"')
+    expect(getTag(html, /<div[^>]*class="popup"[^>]*>/)).toContain('data-open=""')
+  })
+})

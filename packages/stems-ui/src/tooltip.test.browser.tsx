@@ -710,3 +710,82 @@ describe('tooltip', () => {
     expect(popup.getBoundingClientRect().bottom <= rect.top + 1).toBe(true)
   })
 })
+
+describe('tooltip detached triggers', () => {
+  function setupDetached(t: T, props: tooltip.TooltipContextProps<string> = {}) {
+    addStyle(t, BASE_CSS)
+    let h = tooltip.createHandle<string>()
+    let result = render(
+      <div>
+        <button
+          id="a"
+          data-test-trigger
+          mix={tooltip.trigger({ handle: h, payload: 'Bold', delay: 0 })}
+        >
+          B
+        </button>
+        <button
+          id="b"
+          data-test-trigger
+          mix={tooltip.trigger({ handle: h, payload: 'Italic', delay: 0 })}
+        >
+          I
+        </button>
+        <tooltip.Context handle={h} {...props}>
+          {({ payload }) => (
+            <div id="popup" data-test-popup mix={tooltip.popup()}>
+              {payload ?? 'none'}
+            </div>
+          )}
+        </tooltip.Context>
+        <input id="outside" />
+      </div>,
+    )
+    t.after(result.cleanup)
+    let get = (id: string) => result.$(`#${id}`) as HTMLElement
+    return { ...result, h, get, a: get('a'), b: get('b'), popup: get('popup') }
+  }
+
+  it('renders no popup-button ARIA on detached triggers', async (t) => {
+    let { a, act } = setupDetached(t)
+    await act(() => {})
+    expect(a.getAttribute('aria-haspopup')).toBe(null)
+    expect(a.getAttribute('aria-expanded')).toBe(null)
+    expect(a.hasAttribute('data-popup-open')).toBe(false)
+  })
+
+  it('opens on hover, moves to another trigger with its payload, and closes', async (t) => {
+    let { a, b, popup, act, h } = setupDetached(t)
+    pointer(a, 'pointerenter')
+    await waitFor(() => isOpen(a))
+    await act(() => {})
+    expect(isShown(popup)).toBe(true)
+    expect(h.isOpen).toBe(true)
+    expect(popup.textContent).toBe('Bold')
+    // Above #a (left 100, width 60): centered at 130.
+    await waitFor(() => Math.round(popup.getBoundingClientRect().left) === 90)
+
+    pointer(a, 'pointerleave', { relatedTarget: b })
+    pointer(b, 'pointerenter')
+    await waitFor(() => isOpen(b))
+    await act(() => {})
+    expect(isOpen(a)).toBe(false)
+    expect(popup.textContent).toBe('Italic')
+    await waitFor(() => Math.round(popup.getBoundingClientRect().left) === 190)
+
+    pointer(b, 'pointerleave', { relatedTarget: document.body })
+    await waitFor(() => !isOpen(b))
+    expect(h.isOpen).toBe(false)
+  })
+
+  it('opens and closes with the handle', async (t) => {
+    let { b, popup, act, h } = setupDetached(t)
+    await act(() => h.open('b'))
+    await act(() => {})
+    expect(isShown(popup)).toBe(true)
+    expect(isOpen(b)).toBe(true)
+    expect(popup.textContent).toBe('Italic')
+    await act(() => h.close())
+    await waitFor(() => !isOpen(b))
+  })
+})

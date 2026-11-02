@@ -41,9 +41,10 @@ export function TooltipProvider(handle: Handle<TooltipProviderProps>) {
   }
 }
 
-export type TooltipProps = tooltip.TooltipContextProps
+export type TooltipProps<Payload = unknown> = tooltip.TooltipContextProps<Payload>
 
-export function Tooltip(handle: Handle<TooltipProps>) {
+/** `handle` connects detached `TooltipTrigger`s; `children` may be a function of `{ payload }`. */
+export function Tooltip<Payload = unknown>(handle: Handle<TooltipProps<Payload>>) {
   return () => <tooltip.Context {...handle.props} />
 }
 
@@ -51,14 +52,33 @@ export type TooltipTriggerProps = Props<'button'> & tooltip.TooltipTriggerOption
 
 export function TooltipTrigger(handle: Handle<TooltipTriggerProps>) {
   return () => {
-    let { mix, delay, closeDelay, closeOnClick, disabled, ...props } = handle.props
+    let {
+      mix,
+      delay,
+      closeDelay,
+      closeOnClick,
+      disabled,
+      handle: tooltipHandle,
+      payload,
+      ...props
+    } = handle.props
 
     return (
       <button
         type="button"
         data-slot="tooltip-trigger"
         {...props}
-        mix={[tooltip.trigger({ delay, closeDelay, closeOnClick, disabled }), mix]}
+        mix={[
+          tooltip.trigger({
+            delay,
+            closeDelay,
+            closeOnClick,
+            disabled,
+            handle: tooltipHandle,
+            payload,
+          }),
+          mix,
+        ]}
       />
     )
   }

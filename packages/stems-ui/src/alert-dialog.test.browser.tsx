@@ -211,3 +211,61 @@ describe('alert dialog', () => {
     expect(outer.getAttribute('data-open')).toBe('')
   })
 })
+
+describe('alert dialog detached triggers', () => {
+  it('opens from detached triggers with their payloads and returns focus', async (t) => {
+    addStyle(t, css)
+    let h = alertDialog.createHandle<{ item: string }>()
+    let result = render(
+      <div>
+        <button id="d1" mix={alertDialog.trigger({ handle: h, payload: { item: 'file.txt' } })}>
+          Delete file
+        </button>
+        <button id="d2" mix={alertDialog.trigger({ handle: h, payload: { item: 'photo.png' } })}>
+          Delete photo
+        </button>
+        <alertDialog.Context handle={h}>
+          {({ payload }) => (
+            <dialog class="popup" mix={alertDialog.popup()}>
+              <h2 mix={alertDialog.title()}>Delete {payload?.item}?</h2>
+              <button class="cancel" mix={alertDialog.close()}>
+                Cancel
+              </button>
+            </dialog>
+          )}
+        </alertDialog.Context>
+      </div>,
+    )
+    t.after(result.cleanup)
+    let d1 = result.$('#d1') as HTMLButtonElement
+    let d2 = result.$('#d2') as HTMLButtonElement
+    let popup = result.$('dialog') as HTMLDialogElement
+    await result.act(() => {})
+    expect(d1.getAttribute('aria-controls')).toBe(popup.id)
+    expect(d1.getAttribute('aria-expanded')).toBe('false')
+
+    d2.focus()
+    await result.act(() => d2.click())
+    await result.act(() => {})
+    expect(popup.open).toBe(true)
+    expect(popup.getAttribute('role')).toBe('alertdialog')
+    expect(popup.matches(':modal')).toBe(true)
+    expect(result.$('h2')!.textContent).toBe('Delete photo.png?')
+    expect(d2.getAttribute('aria-expanded')).toBe('true')
+    expect(d1.getAttribute('aria-expanded')).toBe('false')
+
+    await result.act(() => (result.$('.cancel') as HTMLElement).click())
+    await waitFor(() => !popup.open)
+    await result.act(() => {})
+    expect(document.activeElement).toBe(d2)
+    expect(d2.getAttribute('aria-expanded')).toBe('false')
+
+    await result.act(() => h.open('d1'))
+    await result.act(() => {})
+    expect(result.$('h2')!.textContent).toBe('Delete file.txt?')
+    expect(h.isOpen).toBe(true)
+    escape()
+    await waitFor(() => !popup.open)
+    expect(h.isOpen).toBe(false)
+  })
+})

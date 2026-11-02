@@ -29,13 +29,24 @@ import { splitOptions } from './collapsible-panel.ts'
 import { getDirection, horizontalArrowStep } from './direction.ts'
 import { createHoverAim } from './hover-aim.ts'
 import { getMenubar, type MenubarContextValue } from './menubar.ts'
+import { claimMenuFilter, type MenuFilterContextValue } from './menu-filter.ts'
 import {
+  attachPopupHandle,
+  createDetachedPopupStore,
   createPopupArrow,
   createPopupBackdrop,
   createPopupStore,
   createPopupSurface,
   createPopupTrigger,
 } from './popup.ts'
+import {
+  createPopupHandle,
+  createTriggerBinding,
+  forward,
+  resolvePayloadChildren,
+  writeAttributes,
+} from './popup-handle.ts'
+import type { PopupHandle, PopupPayloadChildren } from './popup-handle.ts'
 import type {
   PopupAnchor,
   PopupChangeRequest,
@@ -47,6 +58,7 @@ import type {
   PopupStore,
   PopupSurfaceOptions,
   PopupTriggerEntry,
+  PopupTriggerIdProps,
   PopupTriggerOptions,
 } from './popup.ts'
 import { createPresence } from './presence.ts'
@@ -215,14 +227,30 @@ interface MenuSharedProps {
   children?: RemixNode
 }
 
+/**
+ * Links a `menu.Context` with triggers rendered outside it (Base UI's `Menu.Handle`): `isOpen`,
+ * `open(triggerId?)`, `close()`.
+ */
+export type MenuHandle<Payload = unknown> = PopupHandle<Payload, 'menu'>
+
+/** Creates a handle for detached menu triggers (Base UI's `Menu.createHandle()`). */
+export function createMenuHandle<Payload = unknown>(): MenuHandle<Payload> {
+  return createPopupHandle<Payload, 'menu'>('menu')
+}
+
 /** Props of `menu.Context` (Base UI `Menu.Root`). */
-export interface MenuContextProps extends PopupStateProps, MenuSharedProps {
+export interface MenuContextProps<Payload = unknown>
+  extends PopupStateProps, Omit<MenuSharedProps, 'children'>, PopupTriggerIdProps {
   /**
    * While open: lock page scroll, make outside content inert, and keep focus in the menu.
    * Ignored (treated as `false`) while the menu was opened by hovering the trigger.
    * @default true
    */
   modal?: PopupStateProps['modal']
+  /** Connects triggers rendered outside the `Context` (`trigger({ handle })`). Read once. */
+  handle?: MenuHandle<Payload>
+  /** Nodes, or a function of `{ payload }` (the active trigger's `payload`). */
+  children?: PopupPayloadChildren<RemixNode, Payload>
 }
 
 /** Props of `menu.SubmenuContext` (Base UI `Menu.SubmenuRoot`). Submenus are never modal. */
@@ -245,7 +273,12 @@ export interface ContextMenuContextProps extends PopupStateProps, MenuSharedProp
 }
 
 /** Trigger options: `disabled`, and Base UI's `openOnHover` / `delay` / `closeDelay`. */
-export interface MenuTriggerOptions extends PopupTriggerOptions {}
+export interface MenuTriggerOptions extends PopupTriggerOptions {
+  /** The menu to control when the trigger is outside its `Context`. Read on first render. */
+  handle?: MenuHandle<any>
+  /** Data for the menu while this trigger is active (`payload` in the `Context`). */
+  payload?: unknown
+}
 
 /** Popup options: Base UI's Positioner props plus Popup's `initialFocus` / `finalFocus`. */
 export interface MenuPopupOptions extends PopupSurfaceOptions {}
@@ -439,12 +472,27 @@ export interface MenuContextValue {
   readonly _menubar: MenubarContextValue | undefined
   /** @internal */
   update(): Promise<unknown>
+  /** The `FilterProvider` this menu claimed, if it's filterable. */
+  readonly filter: MenuFilterContextValue | undefined
+  /** @internal Whether the filter input holds focus while items are highlighted virtually. */
+  readonly _virtual: boolean
+  /** @internal */
+  readonly _highlightSource: MenuHighlightReason
+  /** @internal Whether the filter hides this item (or group of items). */
+  _filterHidden(node: HTMLElement | null): boolean
+  /** @internal Number of this menu's items the filter shows. */
+  _visibleCount(): number
+  /** @internal */
+  _setFilterNode(kind: 'input' | 'list', node: HTMLElement | null): void
+  /** @internal */
+  readonly _filterInput: HTMLElement | null
 }
 
 // Internal prop set by the SubmenuContext / ContextMenuContext wrappers.
 const KIND = '__stemsMenuKind'
 
-interface InternalProps extends MenuContextProps {
+interface InternalProps extends Omit<MenuContextProps, 'children'> {
+  children?: PopupPayloadChildren<RemixNode>
   closeParentOnEsc?: boolean
   [KIND]?: MenuKind
 }
@@ -473,8 +521,15 @@ function MenuProvider(handle: Handle<InternalProps, MenuContextValue>): () => Re
   let typedTimer = 0
   let closingTree = false
   let menu: MenuContextValue
+  // Filterable menus (lib/menu-filter.ts): the input keeps focus and items are highlighted
+  // virtually (`aria-activedescendant`).
+  let filter = claimMenuFilter(handle, handle)
+  let filterInput: HTMLElement | null = null
+  let filterList: HTMLElement | null = null
+  let lastQuery = filter?.value
+  let itemIds = 0
 
-  let storeProps: PopupStateProps = {
+  let storeProps: PopupStateProps & PopupTriggerIdProps = {
     get open() {
       return handle.props.open
     },
@@ -485,7 +540,18 @@ function MenuProvider(handle: Handle<InternalProps, MenuContextValue>): () => Re
       return handle.props.onOpenChange
     },
     get onOpenChangeComplete() {
-      return handle.props.onOpenChangeComplete
+      if (!filter) return handle.props.onOpenChangeComplete
+      return (open: boolean) => {
+        handle.props.onOpenChangeComplete?.(open)
+        // Base UI resets the query once the menu has closed (reason 'popup-close').
+        if (!open && !store.open) filter?.setValue('', 'popup-close')
+      }
+    },
+    get triggerId() {
+      return handle.props.triggerId
+    },
+    get defaultTriggerId() {
+      return handle.props.defaultTriggerId
     },
     get modal() {
       if (kind === 'submenu') return false
@@ -497,7 +563,10 @@ function MenuProvider(handle: Handle<InternalProps, MenuContextValue>): () => Re
     },
   }
 
+  // Detached triggers (`handle`) are for top-level menus only.
+  let popupHandle = kind === 'menu' ? handle.props.handle : undefined
   let store = createPopupStore({
+    handle: popupHandle,
     id: handle.id,
     getProps: () => storeProps,
     update: () => handle.update(),
@@ -580,8 +649,19 @@ function MenuProvider(handle: Handle<InternalProps, MenuContextValue>): () => Re
     return node ? entries.get(node)?.label() : undefined
   }
 
+  /** Whether the filter input owns focus, so highlighting doesn't move DOM focus. */
+  function isVirtual() {
+    let popup = store.popupNode
+    return !!(filter && filterInput?.isConnected && popup?.contains(filterInput))
+  }
+
   function highlight(node: HTMLElement | null, options: HighlightOptions = {}) {
     let { focus = false, reason = 'none', event } = options
+    if (isVirtual()) {
+      focus = false
+      // `aria-activedescendant` needs an id.
+      if (node && !node.id) node.id = `${store.popupId}-item-${++itemIds}`
+    }
     if (highlighted !== node) {
       // Record the highlight before focusing: focusing runs `_focusHighlight` synchronously.
       highlighted = node
@@ -657,10 +737,18 @@ function MenuProvider(handle: Handle<InternalProps, MenuContextValue>): () => Re
   function onKeyDown(event: KeyboardEvent) {
     let popup = store.popupNode
     let target = event.target
-    if (!popup || !(target instanceof Element) || target.closest('[role="menu"]') !== popup) return
+    if (!popup || !(target instanceof Element)) return
+    // Ignore keys from nested submenus. A filterable menu's popup is a dialog holding the input
+    // and the `role="menu"` list.
+    let owner = target.closest('[role="menu"], [role="dialog"]')
+    if (owner !== popup && !(owner !== null && owner === filterList && popup.contains(owner))) {
+      return
+    }
     if (event.defaultPrevented || event.isComposing) return
 
     let key = event.key
+    let fromInput = filter !== undefined && target === filterInput
+    if (fromInput && !filterKey(event)) return
     let dir = getDirection(popup)
     let vertical = orientation() === 'vertical'
     let step = horizontalArrowStep(key, dir)
@@ -716,10 +804,46 @@ function MenuProvider(handle: Handle<InternalProps, MenuContextValue>): () => Re
       return
     }
 
+    // A filterable menu has no typeahead: characters go to the input.
+    if (filter) return
     if (key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
       if (key === ' ') event.preventDefault()
       typeahead(key, event)
     }
+  }
+
+  /**
+   * Whether a key typed in the filter input navigates the menu (`true`) or edits the text
+   * (`false`), after Base UI's `getMenuFilterKeyAction`.
+   */
+  function filterKey(event: KeyboardEvent): boolean {
+    let key = event.key
+    if (event.keyCode === 229) return false
+    if (key === 'Tab' || key === 'Escape') return true
+    if (key === 'Enter') {
+      event.preventDefault()
+      let entry = highlighted ? entries.get(highlighted) : undefined
+      if (highlighted && entry && !entry.disabled()) highlighted.click()
+      return false
+    }
+    let arrow = key.startsWith('Arrow')
+    let boundary = key === 'Home' || key === 'End'
+    if (event.shiftKey || event.ctrlKey || event.altKey || event.metaKey) {
+      return !(arrow || boundary || key.length === 1)
+    }
+    if (key.length === 1) return false
+    let hasValue = (filter?.value ?? '') !== ''
+    if (boundary) return highlighted !== null && !hasValue
+    if (!arrow) return true
+    let vertical = orientation() === 'vertical'
+    let mainAxis = vertical
+      ? key === 'ArrowUp' || key === 'ArrowDown'
+      : !(key === 'ArrowUp' || key === 'ArrowDown')
+    if (mainAxis) return true
+    // Cross-axis keys open / close a highlighted submenu trigger's submenu, and otherwise move
+    // the caret of a non-empty input.
+    if (highlighted && entries.get(highlighted)?.submenu) return true
+    return !hasValue
   }
 
   menu = {
@@ -800,7 +924,7 @@ function MenuProvider(handle: Handle<InternalProps, MenuContextValue>): () => Re
         return
       }
       highlight(null, { reason: 'pointer', event })
-      if (popup && popup.contains(popup.ownerDocument.activeElement)) {
+      if (popup && !isVirtual() && popup.contains(popup.ownerDocument.activeElement)) {
         popup.focus({ preventScroll: true })
       }
     },
@@ -814,6 +938,23 @@ function MenuProvider(handle: Handle<InternalProps, MenuContextValue>): () => Re
     _initialFocus(type: PopupInteractionType | null) {
       let strategy = pendingFocus ?? (type === 'keyboard' ? 'first' : 'popup')
       pendingFocus = null
+      if (filter && filterInput?.isConnected && store.popupNode?.contains(filterInput)) {
+        // Base UI: a click or keyboard open focuses the input; hover, touch and pen opens
+        // don't (no on-screen keyboard). A keyboard open highlights the first item.
+        let hover = store.openReason === 'trigger-hover'
+        if (strategy === 'none' || hover || type === 'touch' || type === 'pen') {
+          return strategy === 'none' ? undefined : store.popupNode
+        }
+        let list = visibleItems().filter(([, entry]) => !entry.disabled())
+        let edge = strategy === 'last' ? list.at(-1) : list[0]
+        if (
+          edge &&
+          (strategy === 'first' || strategy === 'last' || filter.autoHighlight === 'always')
+        ) {
+          highlight(edge[0], { reason: strategy === 'popup' ? 'none' : 'keyboard' })
+        }
+        return filterInput
+      }
       if (strategy === 'none') return undefined
       if (strategy === 'first' || strategy === 'last') {
         let list = visibleItems().filter(([, entry]) => !entry.disabled())
@@ -840,16 +981,76 @@ function MenuProvider(handle: Handle<InternalProps, MenuContextValue>): () => Re
     _contextFocus: null,
     _contextArea: null,
     _menubar: menubar,
+    filter,
+    get _virtual() {
+      return isVirtual()
+    },
+    get _highlightSource() {
+      return highlightSource
+    },
+    _filterHidden(node) {
+      if (!filter?.active || !node) return false
+      let entry = entries.get(node)
+      if (entry) return !filter.matches(entry.label())
+      // A group: hidden when it has items of this menu and the filter hides all of them.
+      let own = [...node.querySelectorAll<HTMLElement>('[role^="menuitem"]')].filter((item) =>
+        entries.has(item),
+      )
+      return own.length > 0 && own.every((item) => !filter!.matches(entries.get(item)!.label()))
+    },
+    _visibleCount() {
+      let popup = store.popupNode
+      let count = 0
+      for (let [node, entry] of entries) {
+        if (popup && !popup.contains(node)) continue
+        if (!filter?.active || filter.matches(entry.label())) count++
+      }
+      return count
+    },
+    _setFilterNode(kind, node) {
+      if (kind === 'input') {
+        filterInput = node
+        filter?._setInput(node)
+      } else {
+        filterList = node
+      }
+    },
+    get _filterInput() {
+      return filterInput
+    },
+  }
+
+  filter?._setUpdate(() => handle.update())
+
+  /** After the query changed: drop a highlight the filter hid, and auto-highlight. */
+  function afterFilter() {
+    if (!store.open) return
+    let list = visibleItems().filter(([, entry]) => !entry.disabled())
+    if (highlighted && !list.some(([node]) => node === highlighted)) {
+      highlight(null, { reason: 'none' })
+    }
+    let auto = filter?.autoHighlight
+    let query = filter?.value.trim() ?? ''
+    if ((auto === 'always' || (auto && query !== '')) && list[0]) {
+      highlight(list[0][0], { reason: 'none' })
+    }
+    store.popupNode?.querySelector('[role="menu"]')?.scrollTo?.({ top: 0 })
+    if (highlighted) highlighted.scrollIntoView?.({ block: 'nearest', inline: 'nearest' })
   }
 
   parent?._addChild(menu, handle.signal)
   menubar?._register(menu, handle.signal)
   handle.context.set(menu)
+  attachPopupHandle(popupHandle, menu, store, handle.signal)
   handle.signal.addEventListener('abort', () => clearTimeout(typedTimer))
 
   return () => {
     store.sync()
     menubar?._sync()
+    if (filter && filter.value !== lastQuery) {
+      lastQuery = filter.value
+      handle.queueTask(afterFilter)
+    }
     if (!store.open) {
       highlighted = null
       pendingFocus = null
@@ -860,8 +1061,33 @@ function MenuProvider(handle: Handle<InternalProps, MenuContextValue>): () => Re
         if (store.open && !parent.store.open) store.setOpen(false, { reason: 'none' })
       })
     }
-    return handle.props.children
+    return resolvePayloadChildren(handle.props.children, store.payload)
   }
+}
+
+// A detached trigger's menu while no `Context` is attached: closed and inert (methods no-op).
+function createDetachedMenu(store: PopupStore): MenuContextValue {
+  let values: Partial<MenuContextValue> = {
+    kind: 'menu',
+    store,
+    parent: undefined,
+    open: false,
+    disabled: false,
+    orientation: 'vertical',
+    highlighted: null,
+    _contextAnchor: null,
+    _contextFocus: null,
+    _contextArea: null,
+    _menubar: undefined,
+  }
+  let menu: MenuContextValue = new Proxy(values as MenuContextValue, {
+    get(target, key) {
+      if (key === 'root') return menu
+      if (key in target) return Reflect.get(target, key)
+      return () => undefined
+    },
+  })
+  return menu
 }
 
 function withKind(kind: MenuKind) {
@@ -879,8 +1105,8 @@ function getMenu(handle: MixinHandle<HTMLElement>): MenuContextValue {
  * `onOpenChange(open, details)`, `onOpenChangeComplete`, `modal` (default `true`), `loopFocus`,
  * `orientation`, `disabled`, `highlightItemOnHover`, `onItemHighlighted`.
  */
-export const MenuContext = MenuProvider as unknown as (
-  handle: Handle<MenuContextProps, MenuContextValue>,
+export const MenuContext = MenuProvider as unknown as <Payload = unknown>(
+  handle: Handle<MenuContextProps<Payload>, MenuContextValue>,
 ) => () => RemixNode
 
 /** Provider for a submenu nested in a menu popup (Base UI `Menu.SubmenuRoot`). */
@@ -898,13 +1124,38 @@ export const ContextMenuContext = withKind('context-menu') as unknown as (
 
 export const trigger: MixinFactory<HTMLElement, [options?: MenuTriggerOptions], ElementProps> =
   createMixin<HTMLElement, [options?: MenuTriggerOptions], ElementProps>((handle, hostType) => {
-    let menu = getMenu(handle)
+    // Resolves to the attached root of `options.handle`, else the enclosing menu.
+    let binding = createTriggerBinding(
+      handle,
+      getMenu(handle) as MenuContextValue | undefined,
+      (popupHandle) => createDetachedMenu(createDetachedPopupStore(popupHandle)),
+      (resolve) => ({ store: forward(() => resolve().store) }),
+    )
+    // Menubar calls compare menus by identity, so they get `binding.current`.
+    let menu = binding.context
     let store = menu.store
     let menubar = menu._menubar
-    let popupTrigger = createPopupTrigger(handle, hostType, store, { haspopup: 'menu' })
+    // A filterable menu's popup is a dialog holding the input and the menu list (Base UI).
+    let filterable = (getMenu(handle) as MenuContextValue | undefined)?.filter !== undefined
+    let popupTrigger = createPopupTrigger(handle, hostType, store, {
+      haspopup: filterable ? 'dialog' : 'menu',
+      isDetached: () => binding.detached,
+    })
+
+    function refresh() {
+      popupTrigger.refresh()
+      let node = popupTrigger.node
+      let open = store.open && store.isActiveTrigger(popupTrigger.entry)
+      if (node) writeAttributes(node, { 'data-pressed': open ? '' : undefined })
+    }
 
     function onKeyDown(event: KeyboardEvent) {
-      if (menubar && !popupTrigger.entry.disabled && menubar._onTriggerKeyDown(menu, event)) return
+      if (
+        menubar &&
+        !popupTrigger.entry.disabled &&
+        menubar._onTriggerKeyDown(binding.current, event)
+      )
+        return
       if (popupTrigger.entry.disabled || menu.orientation === 'horizontal') return
       if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return
       event.preventDefault()
@@ -922,6 +1173,7 @@ export const trigger: MixinFactory<HTMLElement, [options?: MenuTriggerOptions], 
     return (options, props) => {
       ;[options, props] = splitOptions(options, props)
       let opts = options ?? {}
+      binding.bind(opts.handle, refresh)
       let id = typeof props.id === 'string' ? props.id : handle.id
       menu._setTriggerId(popupTrigger.entry, id)
       let open = store.open && store.isActiveTrigger(popupTrigger.entry)
@@ -933,19 +1185,20 @@ export const trigger: MixinFactory<HTMLElement, [options?: MenuTriggerOptions], 
         menubar &&
           attrs({
             role: 'menuitem',
-            tabIndex: disabled ? undefined : menubar._isTabbable(menu) ? 0 : -1,
+            tabIndex: disabled ? undefined : menubar._isTabbable(binding.current) ? 0 : -1,
           }),
         popupTrigger.render({
           disabled,
           openOnHover: opts.openOnHover,
           delay: opts.delay ?? 100,
           closeDelay: opts.closeDelay,
+          payload: opts.payload,
         }),
         on<HTMLElement, 'keydown'>('keydown', onKeyDown),
-        menubar && on<HTMLElement, 'focus'>('focus', () => menubar._setActive(menu)),
+        menubar && on<HTMLElement, 'focus'>('focus', () => menubar._setActive(binding.current)),
         menubar &&
           on<HTMLElement, 'pointerenter'>('pointerenter', (event) => {
-            if (!disabled) menubar._onTriggerHover(menu, event)
+            if (!disabled) menubar._onTriggerHover(binding.current, event)
           }),
       ]
     }
@@ -987,8 +1240,10 @@ export const popup: MixinFactory<HTMLElement, [options?: MenuPopupOptions], Elem
       let isContext = menu.root.kind === 'context-menu'
       return [
         attrs({
-          role: 'menu',
-          'aria-orientation': menu.orientation === 'horizontal' ? 'horizontal' : undefined,
+          // A filterable menu's popup is a dialog; `list()` takes the menu role.
+          role: menu.filter ? 'dialog' : 'menu',
+          'aria-orientation':
+            !menu.filter && menu.orientation === 'horizontal' ? 'horizontal' : undefined,
           'aria-labelledby': menu._labelId(),
         }),
         surface.render(
@@ -1110,6 +1365,7 @@ function createItemCore(
           'aria-disabled': disabled ? 'true' : undefined,
           'data-disabled': disabled ? '' : undefined,
           'data-highlighted': highlighted ? '' : undefined,
+          hidden: menu._filterHidden(node) ? true : undefined,
         }),
         on<HTMLElement, 'click'>('click', (event) => {
           if (disabled || !node) {
@@ -1459,11 +1715,18 @@ function labelGroup(node: HTMLElement, props: ElementProps) {
 function createGroupMixin(radio: boolean) {
   return createMixin<HTMLElement, [], ElementProps>((handle) => {
     let group = radio ? (handle.context.get(RadioGroupProvider) as RadioGroupContextValue) : null
+    let menu = handle.context.get(MenuProvider) as MenuContextValue | undefined
+    let node: HTMLElement | null = null
+    handle.addEventListener('insert', (event) => {
+      node = event.node
+    })
     return (props) => {
       handle.queueTask((node) => labelGroup(node, props))
       return attrs({
         role: 'group',
         'data-disabled': group?.disabled ? '' : undefined,
+        // Base UI keeps filtered-out groups mounted with `hidden`.
+        hidden: menu?._filterHidden(node) ? true : undefined,
       })
     }
   })
@@ -1565,6 +1828,7 @@ export const submenuTrigger: MixinFactory<
           'data-disabled': disabled ? '' : undefined,
           'data-popup-open': open ? '' : undefined,
           'data-highlighted': highlighted ? '' : undefined,
+          hidden: parent?._filterHidden(node) ? true : undefined,
         }),
         on<HTMLElement, 'click'>('click', press),
         on<HTMLElement, 'pointerenter'>('pointerenter', () => {
@@ -1711,5 +1975,177 @@ export const contextTrigger: MixinFactory<HTMLElement, [], ElementProps> = creat
       on<HTMLElement, 'pointerup'>('pointerup', cancelPress),
       on<HTMLElement, 'pointercancel'>('pointercancel', cancelPress),
     ]
+  }
+})
+
+// Filtering (Base UI 1.9 `Menu.Input` / `Clear` / `Empty` / `List`) -------------------------------
+
+export interface MenuFilterClearOptions {
+  /** Whether the button ignores presses. */
+  disabled?: boolean
+}
+
+/**
+ * The filter input of a menu inside a `FilterProvider`: `role="searchbox"`, `aria-controls`
+ * (the list), `aria-activedescendant` (the highlighted item), `data-highlighted` while it shows
+ * its focus ring (cleared when the keyboard highlights an item). Typing filters the items; the
+ * arrow keys move the highlight while focus stays here, and Enter activates the highlighted item.
+ */
+export const filterInput: MixinFactory<HTMLInputElement, [], ElementProps> = createMixin<
+  HTMLInputElement,
+  [],
+  ElementProps
+>((handle) => {
+  let menu = getMenu(handle as unknown as MixinHandle<HTMLElement>)
+  let filter = menu.filter
+  let focused = false
+
+  handle.addEventListener('insert', (event) => menu._setFilterNode('input', event.node))
+  handle.addEventListener('remove', () => {
+    if (menu._filterInput) menu._setFilterNode('input', null)
+  })
+
+  function onInput(event: Event) {
+    let input = event.currentTarget as HTMLInputElement
+    let next = input.value
+    if (!filter?.setValue(next, next === '' ? 'input-clear' : 'input-change', event)) {
+      // Cancelled (or controlled and not updated): show the current query again.
+      if (filter && input.value !== filter.value) input.value = filter.value
+    }
+  }
+
+  return () => {
+    let value = filter?.value ?? ''
+    let highlighted = menu.highlighted
+    let keyboardHighlight = highlighted !== null && menu._highlightSource === 'keyboard'
+    let listId = menu.store.popupNode?.querySelector('[role="menu"]')?.id
+    return [
+      attrs({
+        type: 'text',
+        role: 'searchbox',
+        autoComplete: 'off',
+        spellCheck: 'false',
+        'aria-controls': listId || undefined,
+        'aria-activedescendant': highlighted?.id || undefined,
+        'data-highlighted': focused && !keyboardHighlight ? '' : undefined,
+      }),
+      // The query is owned by the provider; keep the DOM value in sync with it.
+      attrs({ value }),
+      on<HTMLInputElement, 'input'>('input', onInput),
+      on<HTMLInputElement, 'focus'>('focus', () => {
+        focused = true
+        void menu.update()
+      }),
+      on<HTMLInputElement, 'blur'>('blur', () => {
+        focused = false
+        void menu.update()
+      }),
+    ]
+  }
+})
+
+/**
+ * Clears the filter query (reason `'clear-press'`) and refocuses the input. `hidden` while the
+ * query is empty, `tabIndex={-1}`, `aria-hidden`, `data-disabled`.
+ */
+export const filterClear: MixinFactory<
+  HTMLElement,
+  [options?: MenuFilterClearOptions],
+  ElementProps
+> = createMixin<HTMLElement, [options?: MenuFilterClearOptions], ElementProps>(
+  (handle, hostType) => {
+    let menu = getMenu(handle)
+    let filter = menu.filter
+    let disabled = false
+    return (options, props) => {
+      ;[options, props] = splitOptions(options, props)
+      disabled = (options?.disabled ?? false) || menu.disabled
+      let isButton = hostType === 'button'
+      return [
+        attrs({
+          type: isButton ? 'button' : undefined,
+          tabIndex: -1,
+          'aria-hidden': 'true',
+          disabled: isButton && disabled ? true : undefined,
+          hidden: (filter?.value ?? '') === '' ? true : undefined,
+          'data-disabled': disabled ? '' : undefined,
+        }),
+        // Keep focus in the input.
+        on<HTMLElement, 'mousedown'>('mousedown', (event) => event.preventDefault()),
+        on<HTMLElement, 'click'>('click', (event) => {
+          if (disabled || !filter) return
+          filter.setValue('', 'clear-press', event)
+          menu._filterInput?.focus({ preventScroll: true })
+        }),
+      ]
+    }
+  },
+)
+
+/**
+ * The live region for "no matching items": `role="status"`, `aria-live="polite"`,
+ * `aria-atomic`, `data-empty` while the filter shows no items. It stays rendered so screen
+ * readers announce the change; put the message in `EmptyText` inside it.
+ */
+export const filterEmpty: MixinFactory<HTMLElement, [], ElementProps> = createMixin<
+  HTMLElement,
+  [],
+  ElementProps
+>((handle) => {
+  let menu = getMenu(handle)
+  let ready = false
+  handle.addEventListener('insert', () => {
+    // Items register as they mount (and never on the server), so decide after the first commit.
+    ready = true
+    handle.queueTask(() => void menu.update())
+  })
+  return () =>
+    attrs({
+      role: 'status',
+      'aria-live': 'polite',
+      'aria-atomic': 'true',
+      'data-empty': ready && menu._visibleCount() === 0 ? '' : undefined,
+    })
+})
+
+export interface MenuEmptyTextProps {
+  /** Rendered only while the filter shows no items. */
+  children?: RemixNode
+}
+
+/** Renders its children only while the filter shows no items (inside `empty()`). */
+export function EmptyText(handle: Handle<MenuEmptyTextProps>): () => RemixNode {
+  let menu = handle.context.get(MenuProvider) as MenuContextValue | undefined
+  let ready = false
+  handle.queueTask(() => {
+    ready = true
+    void handle.update()
+  })
+  return () => (ready && menu && menu._visibleCount() === 0 ? handle.props.children : null)
+}
+
+/**
+ * Wraps the items so other content (the filter input) can share the popup. In a filterable menu
+ * it is the `role="menu"` element (the popup is a dialog); otherwise it's a plain wrapper
+ * (`role="presentation"`) and the popup keeps the menu role.
+ */
+export const list: MixinFactory<HTMLElement, [], ElementProps> = createMixin<
+  HTMLElement,
+  [],
+  ElementProps
+>((handle) => {
+  let menu = getMenu(handle)
+  handle.addEventListener('insert', (event) => menu._setFilterNode('list', event.node))
+  handle.addEventListener('remove', () => menu._setFilterNode('list', null))
+  return (props) => {
+    if (!menu.filter) return attrs({ role: 'presentation' })
+    let id = typeof props.id === 'string' ? props.id : `${menu.store.popupId}-list`
+    return attrs({
+      id,
+      role: 'menu',
+      tabIndex: -1,
+      'aria-orientation': menu.orientation === 'horizontal' ? 'horizontal' : undefined,
+      'aria-labelledby': menu._labelId(),
+    })
   }
 })

@@ -25,9 +25,10 @@ export {
   type PopoverOpenChangeReason,
 } from 'stems-ui/popover'
 
-export type PopoverProps = popover.PopoverContextProps
+export type PopoverProps<Payload = unknown> = popover.PopoverContextProps<Payload>
 
-export function Popover(handle: Handle<PopoverProps>) {
+/** `handle` connects detached `PopoverTrigger`s; `children` may be a function of `{ payload }`. */
+export function Popover<Payload = unknown>(handle: Handle<PopoverProps<Payload>>) {
   return () => <popover.Context {...handle.props} />
 }
 
@@ -35,13 +36,32 @@ export type PopoverTriggerProps = Props<'button'> & popover.PopoverTriggerOption
 
 export function PopoverTrigger(handle: Handle<PopoverTriggerProps>) {
   return () => {
-    let { mix, disabled, openOnHover, delay, closeDelay, ...props } = handle.props
+    let {
+      mix,
+      disabled,
+      openOnHover,
+      delay,
+      closeDelay,
+      handle: popoverHandle,
+      payload,
+      ...props
+    } = handle.props
 
     return (
       <button
         data-slot="popover-trigger"
         {...props}
-        mix={[popover.trigger({ disabled, openOnHover, delay, closeDelay }), mix]}
+        mix={[
+          popover.trigger({
+            disabled,
+            openOnHover,
+            delay,
+            closeDelay,
+            handle: popoverHandle,
+            payload,
+          }),
+          mix,
+        ]}
       />
     )
   }

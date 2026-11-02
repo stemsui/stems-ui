@@ -1,9 +1,20 @@
 import { createController } from 'remix/router'
 
 import { assets } from '../assets.ts'
+import {
+  guides,
+  headlessOnlyModules,
+  pageForModule,
+  readDemoSource,
+  readMarkdownFile,
+  readModuleReference,
+  readModuleReferences,
+} from '../content.ts'
 import { demos } from '../demos/index.ts'
 import { routes } from '../routes.ts'
+import { ApiPage } from './api-page.tsx'
 import { ComponentPage } from './component-page.tsx'
+import { GuidePage } from './guide-page.tsx'
 import { HomePage } from './home-page.tsx'
 
 export default createController(routes, {
@@ -14,12 +25,40 @@ export default createController(routes, {
     home(context) {
       return context.render(<HomePage />)
     },
-    component(context) {
+    async component(context) {
       let name = context.params.name
       if (!Object.hasOwn(demos, name)) {
         return new Response('Not Found', { status: 404 })
       }
-      return context.render(<ComponentPage name={name} />)
+      let [references, source] = await Promise.all([
+        readModuleReferences(demos[name]!.behavior),
+        readDemoSource(name),
+      ])
+      return context.render(<ComponentPage name={name} references={references} source={source} />)
+    },
+    async guide(context) {
+      let slug = context.params.slug
+      if (!Object.hasOwn(guides, slug)) {
+        return new Response('Not Found', { status: 404 })
+      }
+      let content = await readMarkdownFile(guides[slug]!.file, { dropTitle: true })
+      return context.render(<GuidePage slug={slug} content={content} />)
+    },
+    async api(context) {
+      let module = context.params.module
+      // Modules documented on a component page redirect there.
+      let page = pageForModule(module)
+      if (page) {
+        return Response.redirect(
+          new URL(`${routes.component.href({ name: page })}#${module}`, context.request.url),
+          301,
+        )
+      }
+      if (!headlessOnlyModules.includes(module)) {
+        return new Response('Not Found', { status: 404 })
+      }
+      let reference = await readModuleReference(module)
+      return context.render(<ApiPage reference={reference} />)
     },
   },
 })

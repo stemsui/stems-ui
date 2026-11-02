@@ -4,4 +4,6 @@ export const routes = route({
   assets: get('/assets/*path'),
   home: '/',
   component: '/components/:name',
+  guide: '/docs/:slug',
+  api: '/api/:module',
 })

@@ -10,6 +10,8 @@ import type {
 
 import { splitOptions } from './lib/collapsible-panel.ts'
 import {
+  attachPopupHandle,
+  bindPopupTrigger,
   createPopupArrow,
   createPopupBackdrop,
   createPopupStore,
@@ -20,8 +22,13 @@ import type {
   PopupOpenChangeReason,
   PopupPositionOptions,
   PopupStore,
+  PopupTriggerIdProps,
 } from './lib/popup.ts'
+import { createPopupHandle, resolvePayloadChildren } from './lib/popup-handle.ts'
+import type { PopupHandle, PopupPayloadChildren } from './lib/popup-handle.ts'
 import { createHintTrigger } from './lib/tooltip-trigger.ts'
+
+export type { PopupPayloadState as PreviewCardPayloadState } from './lib/popup-handle.ts'
 
 export type {
   PopupAlign as PreviewCardAlign,
@@ -65,7 +72,20 @@ export class PreviewCardChangeEvent extends Event {
   }
 }
 
-export interface PreviewCardContextProps {
+/**
+ * Links a `Context` with triggers rendered outside it (Base UI's `PreviewCard.Handle`): `isOpen`,
+ * `open(triggerId?)`, `close()`.
+ */
+export type PreviewCardHandle<Payload = unknown> = PopupHandle<Payload, 'preview-card'>
+
+/** Creates a handle for detached triggers (Base UI's `PreviewCard.createHandle()`). */
+export function createHandle<Payload = unknown>(): PreviewCardHandle<Payload> {
+  return createPopupHandle<Payload, 'preview-card'>('preview-card')
+}
+
+export interface PreviewCardContextProps<Payload = unknown> extends PopupTriggerIdProps {
+  /** Connects triggers rendered outside the `Context` (`trigger({ handle })`). Read once. */
+  handle?: PreviewCardHandle<Payload>
   /** Whether the preview card is open (controlled). */
   open?: boolean
   /**
@@ -77,11 +97,16 @@ export interface PreviewCardContextProps {
   onOpenChange?: (open: boolean, details: PreviewCardOpenChangeDetails) => void
   /** Called after the enter or exit animation has finished. */
   onOpenChangeComplete?: (open: boolean) => void
-  children?: RemixNode
+  /** Nodes, or a function of `{ payload }` (the active trigger's `payload`). */
+  children?: PopupPayloadChildren<RemixNode, Payload>
 }
 
 /** Trigger options (Base UI's `PreviewCard.Trigger` props). */
 export interface PreviewCardTriggerOptions {
+  /** The preview card to control when the trigger is outside its `Context`. Read once. */
+  handle?: PreviewCardHandle<any>
+  /** Data for the card while this trigger is active (`payload` in the `Context`). */
+  payload?: unknown
   /**
    * How long to wait before opening on hover or keyboard focus, in ms.
    * @default 600
@@ -115,12 +140,14 @@ function PreviewCardRoot(
     update: () => handle.update(),
     signal: handle.signal,
     createChangeEvent: (open, details) => new PreviewCardChangeEvent(open, details.reason),
+    handle: handle.props.handle,
   })
   handle.context.set(store)
+  attachPopupHandle(handle.props.handle, store, store, handle.signal)
 
   return () => {
     store.sync()
-    return handle.props.children
+    return resolvePayloadChildren(handle.props.children, store.payload)
   }
 }
 
@@ -133,10 +160,14 @@ const CLOSE_DELAY = 300
 
 const triggerMixin: MixinFactory<HTMLElement, [options?: PreviewCardTriggerOptions], ElementProps> =
   createMixin<HTMLElement, [options?: PreviewCardTriggerOptions], ElementProps>((handle) => {
-    let trigger = createHintTrigger(handle, getStore(handle))
+    let binding = bindPopupTrigger(handle, getStore(handle) as PopupStore | undefined)
+    let trigger = createHintTrigger(handle, binding.context, {
+      isDetached: () => binding.detached,
+    })
     return (options, props) => {
       ;[options] = splitOptions(options, props)
       let triggerOptions = options ?? {}
+      binding.bind(triggerOptions.handle, trigger.refresh)
       return trigger.render(() => {
         let delay = triggerOptions.delay ?? OPEN_DELAY
         return {
@@ -147,6 +178,7 @@ const triggerMixin: MixinFactory<HTMLElement, [options?: PreviewCardTriggerOptio
           closeOnClick: false,
           hoverablePopup: true,
           trackPointer: false,
+          payload: triggerOptions.payload,
         }
       })
     }
@@ -191,16 +223,18 @@ const backdropMixin: MixinFactory<HTMLElement, [], ElementProps> = createMixin<
 
 /**
  * Provider that owns the open state (Base UI's `PreviewCard.Root`). Props: `open` /
- * `defaultOpen` / `onOpenChange(open, details)`, `onOpenChangeComplete`.
+ * `defaultOpen` / `onOpenChange(open, details)`, `onOpenChangeComplete`, `handle`, `triggerId` /
+ * `defaultTriggerId`. `children` may be a function of `{ payload }`.
  */
-export const Context: (
-  handle: Handle<PreviewCardContextProps, PreviewCardContextValue>,
-) => () => RemixNode = PreviewCardRoot
+export const Context: <Payload = unknown>(
+  handle: Handle<PreviewCardContextProps<Payload>, PreviewCardContextValue>,
+) => () => RemixNode = PreviewCardRoot as any
 
 /**
  * A link that opens the preview card on hover and keyboard focus (after `delay`). Renders
  * `data-popup-open`; doesn't change the link's role or press behavior. Options: `delay`
- * (default `600`), `closeDelay` (default `300`).
+ * (default `600`), `closeDelay` (default `300`), and `handle` / `payload` for a trigger outside
+ * the `Context`.
  */
 export const trigger = triggerMixin
 

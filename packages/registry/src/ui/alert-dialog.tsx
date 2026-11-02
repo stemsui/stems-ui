@@ -15,9 +15,13 @@ import { buttonVariants, type ButtonSize, type ButtonVariant } from '#stems/ui/b
  * close it; Escape and AlertDialogCancel/AlertDialogAction (when closing) do.
  */
 
-export type AlertDialogProps = alertDialog.AlertDialogContextProps
+export type AlertDialogProps<Payload = unknown> = alertDialog.AlertDialogContextProps<Payload>
 
-export function AlertDialog(handle: Handle<AlertDialogProps>) {
+/**
+ * `handle` connects detached `AlertDialogTrigger`s; `children` may be a function of
+ * `{ payload }`.
+ */
+export function AlertDialog<Payload = unknown>(handle: Handle<AlertDialogProps<Payload>>) {
   return () => <alertDialog.Context {...handle.props} />
 }
 
@@ -25,13 +29,13 @@ export type AlertDialogTriggerProps = Props<'button'> & alertDialog.AlertDialogT
 
 export function AlertDialogTrigger(handle: Handle<AlertDialogTriggerProps>) {
   return () => {
-    let { class: className, mix, disabled, ...props } = handle.props
+    let { class: className, mix, disabled, handle: dialogHandle, payload, ...props } = handle.props
     return (
       <button
         data-slot="alert-dialog-trigger"
         {...props}
         class={cn(className)}
-        mix={[alertDialog.trigger({ disabled }), mix]}
+        mix={[alertDialog.trigger({ disabled, handle: dialogHandle, payload }), mix]}
       />
     )
   }

@@ -1024,3 +1024,410 @@ describe('menu', () => {
     })
   })
 })
+
+describe('menu detached triggers', () => {
+  const DETACHED_CSS = `
+    .detached { position: fixed; top: 40px; width: 80px; height: 30px; margin: 0; padding: 0;
+      border: 0; box-sizing: border-box; }
+    #m1 { left: 20px; } #m2 { left: 300px; }
+    [role="menu"] { margin: 0; padding: 0; border: 0; width: 160px; }
+    [role^="menuitem"] { display: block; height: 24px; }
+  `
+
+  function setupDetached(t: T, props: menu.MenuContextProps<string> = {}) {
+    addStyle(t, DETACHED_CSS)
+    let h = menu.createHandle<string>()
+    let selected: string[] = []
+    let result = render(
+      <div>
+        <button id="m1" class="detached" mix={menu.trigger({ handle: h, payload: 'row-1' })}>
+          Row 1
+        </button>
+        <button id="m2" class="detached" mix={menu.trigger({ handle: h, payload: 'row-2' })}>
+          Row 2
+        </button>
+        <menu.Context handle={h} {...props}>
+          {({ payload }) => (
+            <div id="popup" mix={menu.popup()}>
+              <div
+                id="edit"
+                mix={[menu.item(), onMenuSelect(() => void selected.push(`edit:${payload}`))]}
+              >
+                Edit {payload}
+              </div>
+              <div id="delete" mix={menu.item()}>
+                Delete
+              </div>
+            </div>
+          )}
+        </menu.Context>
+        <button id="outside">Outside</button>
+      </div>,
+    )
+    t.after(result.cleanup)
+    let get = (id: string) => result.$(`#${id}`) as HTMLElement
+    return { ...result, h, get, m1: get('m1'), m2: get('m2'), selected }
+  }
+
+  it('wires menu ARIA to the detached triggers', async (t) => {
+    let { m1, get, act } = setupDetached(t)
+    await act(() => {})
+    expect(m1.getAttribute('aria-haspopup')).toBe('menu')
+    expect(m1.getAttribute('aria-expanded')).toBe('false')
+    expect(m1.getAttribute('aria-controls')).toBe(get('popup').id)
+    expect(m1.id).toBe('m1')
+  })
+
+  it('opens from the pressed trigger, anchors to it and passes its payload', async (t) => {
+    let { m1, m2, get, act, selected } = setupDetached(t)
+    await act(() => mouseClick(m2))
+    let popup = get('popup')
+    expect(isShown(popup)).toBe(true)
+    expect(m2.getAttribute('aria-expanded')).toBe('true')
+    expect(m2.hasAttribute('data-pressed')).toBe(true)
+    expect(m1.getAttribute('aria-expanded')).toBe('false')
+    expect(popup.getAttribute('aria-labelledby')).toBe('m2')
+    expect(get('edit').textContent).toBe('Edit row-2')
+    await waitFor(() => Math.round(popup.getBoundingClientRect().left) === 260)
+    expect(Math.round(popup.getBoundingClientRect().top)).toBe(70)
+
+    await act(() => get('edit').click())
+    expect(selected).toEqual(['edit:row-2'])
+    await waitFor(() => !isShown(popup))
+    expect(m2.getAttribute('aria-expanded')).toBe('false')
+    expect(m2.hasAttribute('data-pressed')).toBe(false)
+
+    await act(() => mouseClick(m1))
+    expect(get('edit').textContent).toBe('Edit row-1')
+    await waitFor(() => Math.round(popup.getBoundingClientRect().left) === 5)
+  })
+
+  it('opens with ArrowDown from a detached trigger and returns focus on Escape', async (t) => {
+    let { m1, get, act } = setupDetached(t)
+    m1.focus()
+    await act(() => key(m1, 'ArrowDown'))
+    await act(() => {})
+    expect(isShown(get('popup'))).toBe(true)
+    expect(document.activeElement).toBe(get('edit'))
+    key(document.activeElement, 'Escape')
+    await act(() => {})
+    expect(document.activeElement).toBe(m1)
+    expect(m1.getAttribute('aria-expanded')).toBe('false')
+  })
+
+  it('opens and closes with the handle', async (t) => {
+    let { h, m2, get, act } = setupDetached(t)
+    await act(() => h.open('m2'))
+    await act(() => {})
+    expect(h.isOpen).toBe(true)
+    expect(isShown(get('popup'))).toBe(true)
+    expect(m2.getAttribute('aria-expanded')).toBe('true')
+    expect(get('edit').textContent).toBe('Edit row-2')
+    await act(() => h.close())
+    expect(h.isOpen).toBe(false)
+  })
+})
+
+describe('menu filtering', () => {
+  type FilterHarnessProps = menu.MenuFilterProviderProps & {
+    noArgs?: boolean
+    onSelect?: (value: unknown) => void
+  }
+
+  function FilterHarness(handle: Handle<FilterHarnessProps>) {
+    return () => {
+      let { noArgs, onSelect, children: _children, ...filterProps } = handle.props
+      return (
+        <div mix={onMenuSelect((event) => onSelect?.(event.value))}>
+          <menu.FilterProvider {...filterProps}>
+            <menu.Context modal={false}>
+              <button id="trigger" data-test-trigger mix={menu.trigger()}>
+                Actions
+              </button>
+              <div id="popup" mix={menu.popup()}>
+                <input id="input" aria-label="Filter actions" mix={menu.input()} />
+                <button id="clear" mix={noArgs ? menu.clear() : menu.clear({})}>
+                  Clear
+                </button>
+                <div id="empty" mix={menu.empty()}>
+                  <menu.EmptyText>No results.</menu.EmptyText>
+                </div>
+                <div id="list" mix={menu.list()}>
+                  <div id="files" mix={menu.group()}>
+                    <div id="label" mix={menu.groupLabel()}>
+                      Files
+                    </div>
+                    <div id="rename" mix={menu.item({ value: 'rename' })}>
+                      Rename
+                    </div>
+                    <div id="resume" mix={menu.item({ value: 'resume', label: 'Résumé export' })}>
+                      Export
+                    </div>
+                    <div id="delete" mix={menu.item({ value: 'delete', disabled: true })}>
+                      Delete
+                    </div>
+                  </div>
+                  <div id="share" mix={menu.item({ value: 'share' })}>
+                    Share
+                  </div>
+                  <menu.SubmenuContext>
+                    <div id="move" mix={menu.submenuTrigger()}>
+                      Move to
+                    </div>
+                    <div id="subpopup" mix={menu.popup()}>
+                      <div id="inbox" mix={menu.item({ value: 'inbox' })}>
+                        Inbox
+                      </div>
+                    </div>
+                  </menu.SubmenuContext>
+                </div>
+              </div>
+            </menu.Context>
+          </menu.FilterProvider>
+        </div>
+      )
+    }
+  }
+
+  function setupFilter(t: T, props: FilterHarnessProps = {}) {
+    addStyle(t, BASE_CSS)
+    let result = render(<FilterHarness {...props} />)
+    t.after(result.cleanup)
+    let get = (id: string) => document.getElementById(id) as HTMLElement
+    return {
+      ...result,
+      get,
+      trigger: get('trigger'),
+      popup: get('popup'),
+      input: get('input') as HTMLInputElement,
+    }
+  }
+
+  function type(input: HTMLInputElement, value: string) {
+    input.value = value
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+  }
+
+  it('renders dialog / searchbox / menu ARIA', async (t) => {
+    let { trigger, popup, input, get } = setupFilter(t, { noArgs: true })
+    let list = get('list')
+    expect(trigger.getAttribute('aria-haspopup')).toBe('dialog')
+    expect(popup.getAttribute('role')).toBe('dialog')
+    expect(list.getAttribute('role')).toBe('menu')
+    // The host id wins over the default `${popup.id}-list`.
+    expect(list.id).toBe('list')
+    expect(list.getAttribute('aria-labelledby')).toBe('trigger')
+    expect(input.getAttribute('role')).toBe('searchbox')
+    expect(input.getAttribute('aria-controls')).toBe(list.id)
+    expect(input.getAttribute('autocomplete')).toBe('off')
+    expect(get('clear').hidden).toBe(true)
+    expect(get('clear').getAttribute('aria-hidden')).toBe('true')
+    expect(get('clear').tabIndex).toBe(-1)
+    let empty = get('empty')
+    expect(empty.getAttribute('role')).toBe('status')
+    expect(empty.getAttribute('aria-live')).toBe('polite')
+    expect(empty.hasAttribute('data-empty')).toBe(false)
+    expect(empty.textContent).toBe('')
+  })
+
+  it('focuses the input on a click open and filters items as you type', async (t) => {
+    let changes: Array<[string, string]> = []
+    let events: string[] = []
+    function App() {
+      return () => (
+        <div mix={menu.onMenuFilterChange((event) => void events.push(event.value))}>
+          <FilterHarness
+            onValueChange={(value, details) => changes.push([value, details.reason])}
+          />
+        </div>
+      )
+    }
+    addStyle(t, BASE_CSS)
+    let result = render(<App />)
+    t.after(result.cleanup)
+    let get = (id: string) => document.getElementById(id) as HTMLElement
+    let input = get('input') as HTMLInputElement
+
+    await result.act(() => mouseClick(get('trigger')))
+    expect(isShown(get('popup'))).toBe(true)
+    await waitFor(() => document.activeElement === input)
+    await waitFor(() => input.hasAttribute('data-highlighted'))
+
+    await result.act(() => type(input, 're'))
+    expect(changes).toEqual([['re', 'input-change']])
+    expect(events).toEqual(['re'])
+    // "Rename", "Résumé export" (its label, ignoring accents) and "Share" match.
+    expect(get('rename').hidden).toBe(false)
+    expect(get('resume').hidden).toBe(false)
+    expect(get('delete').hidden).toBe(true)
+    expect(get('share').hidden).toBe(false)
+    expect(get('move').hidden).toBe(true)
+    expect(get('files').hidden).toBe(false)
+    expect(get('clear').hidden).toBe(false)
+    // The unfiltered submenu keeps its items.
+    expect(get('inbox').hidden).toBe(false)
+
+    await result.act(() => type(input, 'SHA'))
+    expect(get('files').hidden).toBe(true)
+    expect(get('share').hidden).toBe(false)
+
+    await result.act(() => type(input, ''))
+    expect(changes.at(-1)).toEqual(['', 'input-clear'])
+    expect(get('delete').hidden).toBe(false)
+    expect(get('files').hidden).toBe(false)
+  })
+
+  it('moves a virtual highlight with the arrow keys and activates it with Enter', async (t) => {
+    let selected: unknown[] = []
+    let { act, trigger, popup, input, get } = setupFilter(t, {
+      onSelect: (value) => selected.push(value),
+    })
+
+    await act(() => mouseClick(trigger))
+    await waitFor(() => document.activeElement === input)
+    await act(() => type(input, 'e'))
+    // Rename, Résumé export, Delete (disabled), Share, Move to all contain "e".
+    await act(() => key(input, 'ArrowDown'))
+    expect(get('rename').getAttribute('data-highlighted')).toBe('')
+    expect(document.activeElement).toBe(input)
+    expect(input.getAttribute('aria-activedescendant')).toBe('rename')
+    expect(input.hasAttribute('data-highlighted')).toBe(false)
+
+    await act(() => key(input, 'ArrowDown'))
+    expect(input.getAttribute('aria-activedescendant')).toBe('resume')
+    await act(() => key(input, 'ArrowDown'))
+    // Skips the disabled item.
+    expect(input.getAttribute('aria-activedescendant')).toBe('share')
+    await act(() => key(input, 'ArrowUp'))
+    expect(input.getAttribute('aria-activedescendant')).toBe('resume')
+    expect(document.activeElement).toBe(input)
+
+    // Characters edit the input: no typeahead.
+    let typed = key(input, 's')
+    expect(typed.defaultPrevented).toBe(false)
+    expect(input.getAttribute('aria-activedescendant')).toBe('resume')
+
+    await act(() => key(input, 'Enter'))
+    expect(selected).toEqual(['resume'])
+    expect(popup.getAttribute('data-closed')).toBe('')
+  })
+
+  it('opens from the keyboard with the input focused and the first item highlighted', async (t) => {
+    let { act, trigger, input, get } = setupFilter(t)
+    await act(() => key(trigger, 'ArrowDown'))
+    await waitFor(() => document.activeElement === input)
+    expect(get('rename').getAttribute('data-highlighted')).toBe('')
+    expect(input.getAttribute('aria-activedescendant')).toBe('rename')
+  })
+
+  it('opens a highlighted submenu with ArrowRight and keeps the caret keys otherwise', async (t) => {
+    let { act, trigger, input, get } = setupFilter(t)
+    await act(() => mouseClick(trigger))
+    await waitFor(() => document.activeElement === input)
+    await act(() => type(input, 'mo'))
+    let left = key(input, 'ArrowLeft')
+    expect(left.defaultPrevented).toBe(false)
+    await act(() => key(input, 'ArrowDown'))
+    expect(input.getAttribute('aria-activedescendant')).toBe('move')
+    await act(() => key(input, 'ArrowRight'))
+    await waitFor(() => isShown(get('subpopup')))
+    await waitFor(() => document.activeElement === get('inbox'))
+  })
+
+  it('shows the empty state and clears the query', async (t) => {
+    let changes: Array<[string, string]> = []
+    let { act, trigger, input, get } = setupFilter(t, {
+      onValueChange: (value, details) => changes.push([value, details.reason]),
+    })
+    await act(() => mouseClick(trigger))
+    await waitFor(() => document.activeElement === input)
+
+    await act(() => type(input, 'zzz'))
+    let empty = get('empty')
+    expect(empty.getAttribute('data-empty')).toBe('')
+    await waitFor(() => empty.textContent === 'No results.')
+
+    let clear = get('clear')
+    let down = new MouseEvent('mousedown', { bubbles: true, cancelable: true })
+    clear.dispatchEvent(down)
+    expect(down.defaultPrevented).toBe(true)
+    await act(() => clear.click())
+    expect(changes.at(-1)).toEqual(['', 'clear-press'])
+    expect(input.value).toBe('')
+    expect(document.activeElement).toBe(input)
+    expect(empty.hasAttribute('data-empty')).toBe(false)
+    await waitFor(() => empty.textContent === '')
+    expect(clear.hidden).toBe(true)
+  })
+
+  it('resets the query after closing unless cancelled', async (t) => {
+    let changes: Array<[string, string]> = []
+    let keep = false
+    let { act, trigger, input, get } = setupFilter(t, {
+      onValueChange: (value, details) => {
+        changes.push([value, details.reason])
+        if (keep && details.reason === 'popup-close') details.cancel()
+      },
+    })
+    await act(() => mouseClick(trigger))
+    await waitFor(() => document.activeElement === input)
+    await act(() => type(input, 'sh'))
+    await act(() => key(input, 'Escape'))
+    await waitFor(() => changes.at(-1)?.[1] === 'popup-close')
+    expect(changes.at(-1)).toEqual(['', 'popup-close'])
+    await waitFor(() => input.value === '')
+    expect(get('rename').hidden).toBe(false)
+
+    keep = true
+    await act(() => mouseClick(trigger))
+    await waitFor(() => document.activeElement === input)
+    await act(() => type(input, 'sh'))
+    await act(() => key(input, 'Escape'))
+    await waitFor(() => changes.filter(([, reason]) => reason === 'popup-close').length === 2)
+    expect(input.value).toBe('sh')
+    expect(get('rename').hidden).toBe(true)
+  })
+
+  it('auto-highlights the first match', async (t) => {
+    let { act, trigger, input, get } = setupFilter(t, { autoHighlight: true })
+    await act(() => mouseClick(trigger))
+    await waitFor(() => document.activeElement === input)
+    expect(get('popup').querySelector('[data-highlighted]:not(input)')).toBe(null)
+    await act(() => type(input, 'sha'))
+    await waitFor(() => input.getAttribute('aria-activedescendant') === 'share')
+    // A highlight the filter hides is dropped.
+    await act(() => type(input, 'ren'))
+    await waitFor(() => input.getAttribute('aria-activedescendant') === 'rename')
+    expect(get('share').hasAttribute('data-highlighted')).toBe(false)
+  })
+
+  it('supports a custom filter, external filtering, and a controlled query', async (t) => {
+    let starts = setupFilter(t, {
+      filter: (text, query) => text.toLowerCase().startsWith(query.toLowerCase()),
+    })
+    await starts.act(() => mouseClick(starts.trigger))
+    await waitFor(() => document.activeElement === starts.input)
+    await starts.act(() => type(starts.input, 'e'))
+    expect(starts.get('rename').hidden).toBe(true)
+    expect(starts.get('resume').hidden).toBe(true)
+    await starts.act(() => type(starts.input, 'r'))
+    expect(starts.get('rename').hidden).toBe(false)
+    expect(starts.get('resume').hidden).toBe(false)
+    starts.cleanup()
+
+    let external = setupFilter(t, { filter: null, value: 'zzz' })
+    expect(external.input.value).toBe('zzz')
+    expect(external.get('rename').hidden).toBe(false)
+    expect(external.get('clear').hidden).toBe(false)
+    external.cleanup()
+
+    let controlled = setupFilter(t, { value: 'sh', onValueChange: () => {} })
+    await controlled.act(() => mouseClick(controlled.trigger))
+    await waitFor(() => document.activeElement === controlled.input)
+    expect(controlled.get('rename').hidden).toBe(true)
+    // Not updated by the owner: the input shows the controlled value again.
+    await controlled.act(() => type(controlled.input, 'shx'))
+    expect(controlled.input.value).toBe('sh')
+    expect(controlled.get('share').hidden).toBe(false)
+  })
+})

@@ -33,6 +33,8 @@ import { inertOthers, trapFocus } from './focus-trap.ts'
 import { createHoverAim } from './hover-aim.ts'
 import { createPresence } from './presence.ts'
 import type { Presence } from './presence.ts'
+import { createTriggerBinding, writeAttributes } from './popup-handle.ts'
+import type { PopupHandle, PopupHandleController, TriggerBinding } from './popup-handle.ts'
 import { lockScroll } from './scroll-lock.ts'
 import { focusFirst } from './tabbable.ts'
 
@@ -107,6 +109,21 @@ export interface PopupStateProps {
    * @default false
    */
   modal?: PopupModal
+}
+
+/**
+ * Root props for popups that support detached triggers (Base UI's `handle`, `triggerId`,
+ * `defaultTriggerId`).
+ */
+export interface PopupTriggerIdProps {
+  /**
+   * The `id` of the active trigger (controlled): the one the popup anchors to, returns focus to,
+   * and takes its `payload` from. Pair it with `open`; read the trigger to store from
+   * `details.trigger` in `onOpenChange`. `null` / `undefined`: the trigger that opened it.
+   */
+  triggerId?: string | null
+  /** The `id` of the initially active trigger (with `defaultOpen`). */
+  defaultTriggerId?: string | null
 }
 
 /** Base UI's offset function: receives the anchor and popup sizes and the requested side/align. */
@@ -212,6 +229,8 @@ export interface PopupSurfaceOptions extends PopupPositionOptions, PopupFocusOpt
 export interface PopupTriggerEntry {
   node: HTMLElement | null
   disabled: boolean
+  /** The trigger's `payload` option. */
+  payload?: unknown
 }
 
 interface BackdropEntry {
@@ -223,13 +242,19 @@ export interface PopupStoreOptions {
   /** Id prefix, usually the provider's `handle.id`. */
   id: string
   /** Reads the provider's current props. */
-  getProps(): PopupStateProps
+  getProps(): PopupStateProps & PopupTriggerIdProps
   /** Re-renders the provider (and so every part). */
   update(): Promise<unknown>
   /** The provider's `handle.signal`, captured during setup. */
   signal?: AbortSignal
   /** Builds the bubbling change event dispatched from the active trigger (or the popup). */
   createChangeEvent?(open: boolean, details: PopupOpenChangeDetails): Event
+  /**
+   * The `Context`'s `handle` prop (read once). The store shares the handle's trigger registry
+   * and notifies detached triggers when it renders; attach the widget's context value with
+   * `attachPopupHandle()`.
+   */
+  handle?: PopupHandle<any>
 }
 
 /** Shared popup state. Widgets usually expose it (or an object extending it) as their context. */
@@ -251,6 +276,8 @@ export interface PopupStore {
   readonly descriptionId: string | undefined
   /** The trigger the popup is anchored to and returns focus to. */
   readonly activeTrigger: HTMLElement | null
+  /** The active trigger's `payload` option. */
+  readonly payload: unknown
   readonly popupNode: HTMLElement | null
   readonly arrowNode: HTMLElement | null
   readonly backdropNode: HTMLElement | null
@@ -309,7 +336,12 @@ export interface PopupStore {
 export function createPopupStore(options: PopupStoreOptions): PopupStore {
   let { id, getProps, update, signal } = options
   let uncontrolledOpen = getProps().defaultOpen ?? false
-  let triggers: PopupTriggerEntry[] = []
+  let defaultTriggerId = getProps().defaultTriggerId ?? null
+  let popupHandle = options.handle
+  // With a handle, triggers register with the handle so detached ones are seen too.
+  let triggers: PopupTriggerEntry[] = popupHandle
+    ? popupHandle._state.shared<PopupTriggerEntry[]>('popup-triggers', () => [])
+    : []
   let activeEntry: PopupTriggerEntry | null = null
   let popupNode: HTMLElement | null = null
   let arrowNode: HTMLElement | null = null
@@ -332,8 +364,21 @@ export function createPopupStore(options: PopupStoreOptions): PopupStore {
   let lastChange: PopupOpenChangeDetails | null = null
   let openReason: PopupOpenChangeReason | null = seenOpen ? 'none' : null
 
+  function findTrigger(triggerId: string) {
+    return triggers.find((entry) => entry.node?.id === triggerId) ?? null
+  }
+
   function currentActive(): PopupTriggerEntry | null {
+    let controlledId = getProps().triggerId
+    if (controlledId != null) {
+      let entry = findTrigger(controlledId)
+      if (entry) return entry
+    }
     if (activeEntry && triggers.includes(activeEntry)) return activeEntry
+    if (defaultTriggerId != null) {
+      let entry = findTrigger(defaultTriggerId)
+      if (entry) return entry
+    }
     return triggers[0] ?? null
   }
 
@@ -380,6 +425,18 @@ export function createPopupStore(options: PopupStoreOptions): PopupStore {
     get activeTrigger() {
       return activeTrigger()
     },
+    get payload() {
+      // Until a trigger has been active (opened it, or named by `triggerId` /
+      // `defaultTriggerId`), there's no payload: the fallback to the first trigger is only for
+      // anchoring, and a payload from it would differ from the server render.
+      let props = getProps()
+      let known =
+        isOpen() ||
+        (activeEntry !== null && triggers.includes(activeEntry)) ||
+        props.triggerId != null ||
+        defaultTriggerId != null
+      return known ? currentActive()?.payload : undefined
+    },
     get popupNode() {
       return popupNode
     },
@@ -417,7 +474,10 @@ export function createPopupStore(options: PopupStoreOptions): PopupStore {
 
       if (next && request.trigger) {
         let entry = triggers.find((candidate) => candidate.node === request.trigger)
-        if (entry) activeEntry = entry
+        if (entry) {
+          activeEntry = entry
+          defaultTriggerId = null
+        }
       }
       pending = { open: next, details }
 
@@ -433,6 +493,8 @@ export function createPopupStore(options: PopupStoreOptions): PopupStore {
     },
     update,
     sync() {
+      // Detached triggers aren't re-rendered by the provider; let them refresh.
+      popupHandle?._state.notify()
       let open = isOpen()
       if (open === seenOpen) return
       seenOpen = open
@@ -461,6 +523,7 @@ export function createPopupStore(options: PopupStoreOptions): PopupStore {
     },
     _activateTrigger(entry) {
       activeEntry = entry
+      defaultTriggerId = null
     },
     _registerLabel(kind, labelId) {
       let list = labels[kind]
@@ -516,6 +579,81 @@ export function createPopupStore(options: PopupStoreOptions): PopupStore {
   signal?.addEventListener('abort', () => store.hover.cancel())
 
   return store
+}
+
+// ---------------------------------------------------------------------------------------------
+// Detached triggers
+
+/**
+ * Attaches a provider to its `handle` prop (see `lib/popup-handle.ts`): detached triggers then
+ * resolve `value` (the widget's context value) and the handle's `open()` / `close()` act on
+ * `store` (reason `'imperative-action'`). Call during the provider's setup.
+ */
+export function attachPopupHandle(
+  popupHandle: PopupHandle<any> | undefined,
+  value: object,
+  store: PopupStore,
+  signal: AbortSignal,
+): void {
+  if (!popupHandle) return
+  let triggers = popupHandle._state.shared<PopupTriggerEntry[]>('popup-triggers', () => [])
+  let controller: PopupHandleController = {
+    get isOpen() {
+      return store.open
+    },
+    open(triggerId) {
+      let entry =
+        triggerId == null
+          ? undefined
+          : triggers.find((candidate) => candidate.node?.id === triggerId)
+      if (store.open) {
+        if (entry && !store.isActiveTrigger(entry)) {
+          store._activateTrigger(entry)
+          void store.update()
+        }
+        return
+      }
+      store.hover.cancel()
+      store._setInteractionType(null)
+      store.setOpen(true, { reason: 'imperative-action', trigger: entry?.node ?? null })
+    },
+    close() {
+      store.setOpen(false, { reason: 'imperative-action' })
+    },
+  }
+  popupHandle._state.attach(value, controller, signal)
+}
+
+const CLOSED: PopupStateProps = { open: false }
+
+/**
+ * An inert, closed store for a detached trigger whose `Context` isn't mounted: it registers
+ * triggers with the handle (so the root sees them once it mounts) and renders no
+ * `aria-controls`.
+ */
+export function createDetachedPopupStore(popupHandle: PopupHandle<any> | undefined): PopupStore {
+  let store = createPopupStore({
+    id: 'stems-detached',
+    getProps: () => CLOSED,
+    update: () => Promise.resolve(),
+    handle: popupHandle,
+  })
+  return Object.create(store, { popupId: { get: () => undefined } }) as PopupStore
+}
+
+/**
+ * The context binding for a trigger mixin of a popup built on a plain `PopupStore` (or an object
+ * extending one): `inside` is the enclosing `Context`'s value, `fallback` extends the detached
+ * store when the widget's context has extra members.
+ */
+export function bindPopupTrigger<Value extends PopupStore>(
+  handle: MixinHandle<HTMLElement>,
+  inside: Value | undefined,
+  fallback: (store: PopupStore) => Value = (store) => store as Value,
+): TriggerBinding<Value> {
+  return createTriggerBinding(handle, inside, (popupHandle) =>
+    fallback(createDetachedPopupStore(popupHandle)),
+  )
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -674,14 +812,43 @@ export interface PopupTriggerConfig {
    * @default true
    */
   toggleOnPress?: boolean
+  /** Whether the trigger is detached from its `Context` (`TriggerBinding.detached`). */
+  isDetached?: () => boolean
 }
 
 export interface PopupTrigger {
+  /** The trigger's registration (registered on first access). */
   readonly entry: PopupTriggerEntry
   readonly node: HTMLElement | null
   /** Toggles the popup as a trigger press would. */
   press(event: Event): void
-  render(options?: PopupTriggerOptions): MixInput<HTMLElement, ElementProps>
+  /** Writes the state attributes to the element (for detached triggers). */
+  refresh(): void
+  render(options?: PopupTriggerOptions & PopupPayloadOption): MixInput<HTMLElement, ElementProps>
+}
+
+export interface PopupPayloadOption {
+  /** Data for the popup while this trigger is active (`store.payload`). */
+  payload?: unknown
+}
+
+/**
+ * Records a trigger's `payload`. When the active trigger's payload changes while open, the
+ * provider re-renders: always for detached triggers, and on the first render for triggers
+ * inside the `Context` (later changes there show up on the provider's next render; re-rendering
+ * every time could loop when a children render function creates a new payload each render).
+ */
+export function setTriggerPayload(
+  handle: MixinHandle<HTMLElement>,
+  store: PopupStore,
+  entry: PopupTriggerEntry,
+  payload: unknown,
+  rerender: boolean,
+): void {
+  if (Object.is(entry.payload, payload)) return
+  entry.payload = payload
+  if (!rerender || !store.open || !store.isActiveTrigger(entry)) return
+  handle.queueTask(() => void store.update())
 }
 
 /**
@@ -697,19 +864,36 @@ export function createPopupTrigger(
   store: PopupStore,
   config: PopupTriggerConfig,
 ): PopupTrigger {
-  let entry = store._registerTrigger(handle.signal)
+  let signal = handle.signal
+  // Registered lazily: a detached trigger's handle is only known once its mixin renders.
+  let registered: PopupTriggerEntry | null = null
   let isButton = hostType === 'button'
   let pointerType: PopupInteractionType | null = null
   let hoverOptions: PopupTriggerOptions = {}
+  let rendered = false
+
+  function ensureEntry() {
+    return (registered ??= store._registerTrigger(signal))
+  }
 
   handle.addEventListener('insert', (event) => {
-    entry.node = event.node
+    ensureEntry().node = event.node
   })
   handle.addEventListener('remove', () => {
-    entry.node = null
+    if (registered) registered.node = null
   })
 
+  function stateAttrs(entry: PopupTriggerEntry) {
+    let open = store.open && store.isActiveTrigger(entry)
+    return {
+      'aria-expanded': open ? 'true' : 'false',
+      'aria-controls': store.popupId as string | undefined,
+      'data-popup-open': open ? '' : undefined,
+    }
+  }
+
   function press(event: Event) {
+    let entry = ensureEntry()
     if (entry.disabled || config.toggleOnPress === false) return
     let detail = (event as MouseEvent).detail
     store._setInteractionType(
@@ -735,16 +919,30 @@ export function createPopupTrigger(
   }
 
   return {
-    entry,
+    get entry() {
+      return ensureEntry()
+    },
     get node() {
-      return entry.node
+      return registered?.node ?? null
     },
     press,
+    refresh() {
+      let node = registered?.node
+      if (node) writeAttributes(node, stateAttrs(registered!))
+    },
     render(options = {}) {
+      let entry = ensureEntry()
       let disabled = options.disabled ?? false
       entry.disabled = disabled
       hoverOptions = options
-      let open = store.open && store.isActiveTrigger(entry)
+      setTriggerPayload(
+        handle,
+        store,
+        entry,
+        options.payload,
+        !rendered || (config.isDetached?.() ?? false),
+      )
+      rendered = true
 
       return [
         attrs({
@@ -752,12 +950,10 @@ export function createPopupTrigger(
           role: isButton ? undefined : 'button',
           tabIndex: isButton ? undefined : disabled ? -1 : 0,
           'aria-haspopup': config.haspopup,
-          'aria-expanded': open ? 'true' : 'false',
-          'aria-controls': store.popupId,
           'aria-disabled': !isButton && disabled ? 'true' : undefined,
           disabled: isButton && disabled ? true : undefined,
-          'data-popup-open': open ? '' : undefined,
           'data-disabled': disabled ? '' : undefined,
+          ...stateAttrs(entry),
         }),
         on<HTMLElement, 'pointerdown'>('pointerdown', (event) => {
           pointerType = toInteractionType(event.pointerType)

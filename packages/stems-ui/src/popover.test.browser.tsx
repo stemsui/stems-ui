@@ -743,3 +743,260 @@ describe('popover', () => {
     })
   })
 })
+
+describe('popover detached triggers', () => {
+  const DETACHED_CSS = `
+    [data-test-popup] { margin: 0; padding: 0; border: 0; width: 160px; height: 96px; }
+    .detached { position: fixed; top: 40px; width: 80px; height: 30px; margin: 0; padding: 0;
+      border: 0; box-sizing: border-box; }
+    #t1 { left: 20px; } #t2 { left: 300px; }
+  `
+
+  function setupDetached(
+    t: T,
+    options: { rootFirst?: boolean; mountRoot?: boolean; props?: popover.PopoverContextProps } = {},
+  ) {
+    addStyle(t, DETACHED_CSS)
+    let h = popover.createHandle<{ label: string }>()
+    let state = { mountRoot: options.mountRoot ?? true }
+    let owner: Handle | undefined
+    function App(handle: Handle) {
+      owner = handle
+      return () => {
+        let triggers = (
+          <div>
+            <button
+              id="t1"
+              class="detached"
+              mix={popover.trigger({ handle: h, payload: { label: 'One' } })}
+            >
+              One
+            </button>
+            <button
+              id="t2"
+              class="detached"
+              mix={popover.trigger({ handle: h, payload: { label: 'Two' } })}
+            >
+              Two
+            </button>
+          </div>
+        )
+        let root = state.mountRoot ? (
+          <popover.Context handle={h} {...options.props}>
+            {({ payload }) => (
+              <div id="popup" data-test-popup mix={popover.popup()}>
+                <p id="payload">{payload ? (payload as { label: string }).label : 'none'}</p>
+                <button id="inside">Inside</button>
+              </div>
+            )}
+          </popover.Context>
+        ) : null
+        return (
+          <div>
+            {options.rootFirst ? root : null}
+            {triggers}
+            {options.rootFirst ? null : root}
+            <button id="outside">Outside</button>
+          </div>
+        )
+      }
+    }
+    let result = render(<App />)
+    t.after(result.cleanup)
+    let get = (id: string) => result.$(`#${id}`) as HTMLElement
+    return {
+      ...result,
+      h,
+      get,
+      t1: get('t1'),
+      t2: get('t2'),
+      async setRoot(mounted: boolean) {
+        state.mountRoot = mounted
+        await result.act(() => owner!.update())
+        await result.act(() => {})
+      },
+    }
+  }
+
+  it('wires ARIA to the popup once the Context renders', async (t) => {
+    let { t1, t2, get, act } = setupDetached(t)
+    await act(() => {})
+    let popup = get('popup')
+    for (let trigger of [t1, t2]) {
+      expect(trigger.getAttribute('type')).toBe('button')
+      expect(trigger.getAttribute('aria-haspopup')).toBe('dialog')
+      expect(trigger.getAttribute('aria-expanded')).toBe('false')
+      expect(trigger.getAttribute('aria-controls')).toBe(popup.id)
+      expect(trigger.hasAttribute('data-popup-open')).toBe(false)
+    }
+  })
+
+  it('opens and closes from a trigger outside the Context', async (t) => {
+    let { t1, t2, get, act, h } = setupDetached(t)
+    await act(() => t1.click())
+    let popup = get('popup')
+    expect(isShown(popup)).toBe(true)
+    expect(h.isOpen).toBe(true)
+    expect(t1.getAttribute('aria-expanded')).toBe('true')
+    expect(t1.hasAttribute('data-popup-open')).toBe(true)
+    expect(t2.getAttribute('aria-expanded')).toBe('false')
+    expect(get('payload').textContent).toBe('One')
+
+    await act(() => t1.click())
+    await waitFor(() => !isShown(popup))
+    expect(h.isOpen).toBe(false)
+    expect(t1.getAttribute('aria-expanded')).toBe('false')
+    expect(t1.hasAttribute('data-popup-open')).toBe(false)
+  })
+
+  it('switches the payload and the anchor to the pressed trigger', async (t) => {
+    let { t1, t2, get, act } = setupDetached(t)
+    await act(() => t1.click())
+    let popup = get('popup')
+    await waitFor(() => Math.abs(popup.getBoundingClientRect().left - 0) < 40)
+    let left1 = popup.getBoundingClientRect().left
+
+    await act(() => t2.click())
+    await act(() => {})
+    expect(isShown(popup)).toBe(true)
+    expect(get('payload').textContent).toBe('Two')
+    expect(t2.getAttribute('aria-expanded')).toBe('true')
+    expect(t1.getAttribute('aria-expanded')).toBe('false')
+    await waitFor(() => popup.getBoundingClientRect().left > left1 + 200)
+    // Centered under #t2 (300 + 40 - 80).
+    expect(Math.round(popup.getBoundingClientRect().left)).toBe(260)
+    expect(Math.round(popup.getBoundingClientRect().top)).toBe(70)
+  })
+
+  it('returns focus to the detached trigger and treats it as inside', async (t) => {
+    let { t2, get, act } = setupDetached(t)
+    t2.focus()
+    await act(() => t2.click())
+    let popup = get('popup')
+    expect(popup.contains(document.activeElement)).toBe(true)
+
+    // A press on another detached trigger is not an outside press.
+    pointer(get('t1'), 'pointerdown')
+    await act(() => {})
+    expect(isShown(popup)).toBe(true)
+
+    key(document.activeElement!, 'Escape')
+    await act(() => {})
+    expect(document.activeElement).toBe(t2)
+    expect(t2.getAttribute('aria-expanded')).toBe('false')
+  })
+
+  it('opens and closes imperatively with the handle', async (t) => {
+    let changes: Array<{ open: boolean; reason: string; trigger?: string }> = []
+    let { h, t2, get, act } = setupDetached(t, {
+      props: {
+        onOpenChange: (open, details) =>
+          changes.push({ open, reason: details.reason, trigger: details.trigger?.id }),
+      },
+    })
+    await act(() => h.open('t2'))
+    await act(() => {})
+    expect(isShown(get('popup'))).toBe(true)
+    expect(get('payload').textContent).toBe('Two')
+    expect(t2.getAttribute('aria-expanded')).toBe('true')
+    expect(changes).toEqual([{ open: true, reason: 'imperative-action', trigger: 't2' }])
+
+    await act(() => h.open('t1'))
+    await act(() => {})
+    expect(get('payload').textContent).toBe('One')
+
+    await act(() => h.close())
+    await act(() => {})
+    expect(h.isOpen).toBe(false)
+    expect(changes.at(-1)).toEqual({ open: false, reason: 'imperative-action', trigger: 't1' })
+  })
+
+  it('works when the Context renders before the triggers', async (t) => {
+    let { t1, get, act } = setupDetached(t, { rootFirst: true })
+    await act(() => {})
+    expect(t1.getAttribute('aria-controls')).toBe(get('popup').id)
+    await act(() => t1.click())
+    expect(isShown(get('popup'))).toBe(true)
+    expect(get('payload').textContent).toBe('One')
+  })
+
+  it('is inert until a Context attaches, and ignores imperative calls meanwhile', async (t) => {
+    let { t1, h, act, setRoot, get } = setupDetached(t, { mountRoot: false })
+    await act(() => {})
+    expect(t1.getAttribute('aria-expanded')).toBe('false')
+    expect(t1.hasAttribute('aria-controls')).toBe(false)
+    h.open('t1')
+    await act(() => t1.click())
+    expect(h.isOpen).toBe(false)
+    expect(t1.getAttribute('aria-expanded')).toBe('false')
+
+    await setRoot(true)
+    expect(t1.getAttribute('aria-controls')).toBe(get('popup').id)
+    // A fresh root doesn't replay earlier calls.
+    expect(h.isOpen).toBe(false)
+    await act(() => t1.click())
+    expect(h.isOpen).toBe(true)
+
+    await setRoot(false)
+    expect(h.isOpen).toBe(false)
+    expect(t1.getAttribute('aria-expanded')).toBe('false')
+    expect(t1.hasAttribute('aria-controls')).toBe(false)
+  })
+
+  it('supports a controlled triggerId', async (t) => {
+    addStyle(t, DETACHED_CSS)
+    let h = popover.createHandle()
+    let result = render(
+      <div>
+        <button id="t1" class="detached" mix={popover.trigger({ handle: h, payload: 1 })} />
+        <button id="t2" class="detached" mix={popover.trigger({ handle: h, payload: 2 })} />
+        <popover.Context handle={h} open triggerId="t2">
+          {({ payload }) => (
+            <div id="popup" data-test-popup mix={popover.popup()}>
+              {String(payload)}
+            </div>
+          )}
+        </popover.Context>
+      </div>,
+    )
+    t.after(result.cleanup)
+    await result.act(() => {})
+    await result.act(() => {})
+    let popup = result.$('#popup') as HTMLElement
+    expect(isShown(popup)).toBe(true)
+    expect(popup.textContent).toBe('2')
+    expect(result.$('#t2')!.getAttribute('aria-expanded')).toBe('true')
+    expect(result.$('#t1')!.getAttribute('aria-expanded')).toBe('false')
+    await waitFor(() => Math.round(popup.getBoundingClientRect().left) === 260)
+  })
+
+  it('accepts a payload from a trigger inside the Context', async (t) => {
+    let result = render(
+      <popover.Context>
+        {({ payload }) => (
+          <>
+            <button id="a" mix={popover.trigger({ payload: 'A' })} />
+            <button id="b" mix={popover.trigger({ payload: 'B' })} />
+            <div id="popup" mix={popover.popup()}>
+              {String(payload)}
+            </div>
+          </>
+        )}
+      </popover.Context>,
+    )
+    t.after(result.cleanup)
+    await result.act(() => (result.$('#b') as HTMLElement).click())
+    expect(result.$('#popup')!.textContent).toBe('B')
+    await result.act(() => (result.$('#a') as HTMLElement).click())
+    expect(result.$('#popup')!.textContent).toBe('A')
+  })
+
+  it('calls trigger() without arguments outside a Context', async (t) => {
+    let result = render(<button id="lonely" mix={popover.trigger()} />)
+    t.after(result.cleanup)
+    let button = result.$('#lonely') as HTMLElement
+    expect(button.getAttribute('aria-expanded')).toBe('false')
+    await result.act(() => button.click())
+    expect(button.getAttribute('aria-expanded')).toBe('false')
+  })
+})

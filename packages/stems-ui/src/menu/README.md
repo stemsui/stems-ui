@@ -106,9 +106,11 @@ Listen for activations anywhere above the items:
   visible instead.
 - `MenuSelectEvent` (`stems:menu-select`) is a Stems extra (Remix had `onMenuSelect`); items
   accept a `value` option reported by it.
-- Not supported: filterable menus (`Menu.FilterProvider` / `Input` / `Clear` / `Empty` /
-  `List`), the Viewport part, `createHandle()` / detached triggers / payloads, `actionsRef`,
-  `defaultTriggerId` / `triggerId`, `data-instant`, `--positioner-width/height`, the
+- **Filtering** (Base UI 1.9 `Menu.FilterProvider` / `Input` / `Clear` / `Empty` / `List`): see
+  [Filtering](#filtering). `Empty` is a live region that stays rendered (put the message in
+  `EmptyText`), and `Clear` gets `hidden` instead of unmounting. `list()` without a
+  `FilterProvider` is a plain `role="presentation"` wrapper (the popup keeps `role="menu"`).
+- Not supported: the Viewport part, `actionsRef`, `data-instant`, `--positioner-width/height`, the
   `'sibling-open'` / `'cancel-open'` reasons (a sibling opening reports `'none'`), opening on
   pointer down with press-drag-release selection, and outside-pointer blocking beyond `inert`.
 
@@ -177,6 +179,123 @@ Listen for activations anywhere above the items:
 Change reasons: `'trigger-press'`, `'trigger-hover'`, `'outside-press'`, `'escape-key'`,
 `'item-press'`, `'list-navigation'`, `'focus-out'`, `'imperative-action'`, `'none'`.
 
+## Detached triggers
+
+Base UI's `createHandle()`: triggers can live anywhere in the document, outside the `Context`,
+linked by a handle. Each trigger can pass a `payload`, so one popup can serve many triggers with
+different data.
+
+```tsx
+import * as menu from 'stems-ui/menu'
+
+let people = menu.createHandle<{ name: string }>()
+
+// Anywhere, e.g. in a table row:
+<button mix={menu.trigger({ handle: people, payload: { name: 'Ada' } })}>Ada</button>
+<button mix={menu.trigger({ handle: people, payload: { name: 'Grace' } })}>Grace</button>
+
+// Elsewhere:
+<menu.Context handle={people}>
+  {({ payload }) => <div mix={menu.popup()}>{payload?.name}</div>}
+</menu.Context>
+```
+
+- `createHandle<Payload>()` returns the handle. Pass it to the `Context` (`handle` prop, read
+  once) and to each detached `trigger({ handle, payload })` (read on the trigger's first
+  render). `Payload` types `payload` in the `Context`'s children function.
+- Detached triggers register with the handle, so they behave like triggers inside the
+  `Context`: `aria-expanded`, `aria-controls`, `data-popup-open`, and `data-pressed` follow the menu, the popup is labelled by the active trigger, ArrowDown / ArrowUp on a trigger open the menu, the popup anchors to the active trigger, focus returns to it, and a
+  press on another trigger counts as inside (it moves the popup instead of dismissing it).
+- The active trigger's `payload` is `{ payload }` in a children render function (re-run each
+  time the `Context` renders) and `payload` on the context value
+  (`handle.context.get(menu.Context).payload`). It's `undefined` until a trigger has been
+  active, and stays while the popup animates out. A children function only works with JSX
+  (`createElement` rejects function children). `payload` also works on triggers inside the
+  `Context`.
+- Handle methods: `isOpen`, `open(triggerId?)` (opens, or moves an open popup, to the trigger
+  with that `id`; reason `'imperative-action'`), `close()`. They act on the mounted `Context`
+  and are ignored while none is mounted. A remounted `Context` starts fresh.
+- `Context` props `triggerId` (controlled, pair with `open`; store `details.trigger?.id` from
+  `onOpenChange`) and `defaultTriggerId` pick the active trigger by element `id`.
+- Detached triggers aren't re-rendered by the `Context`; they update their state attributes
+  directly when it renders. On the server nothing is shared (a handle is usually a module-level
+  singleton), so a detached trigger renders closed and without `aria-controls`; it gets
+  `aria-controls` once the `Context` mounts in the browser.
+- Only top-level `menu.Context` takes a `handle` (not submenus, context menus, or menus inside a
+  `menubar.Context`).
+
+## Filtering
+
+```tsx
+<menu.FilterProvider autoHighlight>
+  <menu.Context>
+    <button mix={menu.trigger()}>Move to…</button>
+    <div mix={menu.popup()}>
+      <input aria-label="Filter folders" mix={menu.input()} />
+      <button mix={menu.clear()}>Clear</button>
+      <div mix={menu.empty()}>
+        <menu.EmptyText>No folders found.</menu.EmptyText>
+      </div>
+      <div mix={menu.list()}>
+        <div mix={menu.item()}>Inbox</div>
+        <div mix={menu.item({ label: 'Résumés' })}>CVs</div>
+      </div>
+    </div>
+  </menu.Context>
+</menu.FilterProvider>
+```
+
+- `FilterProvider` (Base UI `Menu.FilterProvider`) wraps a `Context` or a `SubmenuContext`. The
+  first menu inside it owns it, so a submenu stays unfiltered unless it has its own provider.
+  Props:
+  - `value` / `defaultValue` (default `''`) / `onValueChange(value, details)`: the query.
+    `details` has `reason` (`'input-change'`, `'input-clear'`, `'clear-press'`,
+    `'popup-close'`), `event`, and `cancel()`.
+  - `autoHighlight`: `false` (default), `true` (highlight the first match while the query isn't
+    empty), or `'always'` (also when it is empty).
+  - `filter(text, query)`: replaces the matching. It gets each item's `label` (or text) and the
+    trimmed query. The default keeps items that contain the query, ignoring case and diacritics
+    (the same `containsText()` combobox uses, exported with `startsWithText()`). `null` hides
+    nothing, for filtering the rendered items yourself.
+  - `locale`: for the default matching.
+- `input()` (Base UI `Menu.Input`): `type="text"`, `role="searchbox"`, `autocomplete="off"`,
+  `aria-controls` (the list), `aria-activedescendant` (the highlighted item; items get an `id`
+  when first highlighted if they have none), `data-highlighted` while focused and no item is
+  highlighted by the keyboard. Its `value` follows the query.
+- `clear(options?)` (Base UI `Menu.Clear`): `type="button"`, `tabIndex={-1}`, `aria-hidden`,
+  `hidden` while the query is empty, `data-disabled`. A press clears the query (reason
+  `'clear-press'`) and refocuses the input; `mousedown` is prevented so focus stays in the input.
+  Option: `disabled`.
+- `empty()` (Base UI `Menu.Empty`): `role="status"`, `aria-live="polite"`, `aria-atomic`,
+  `data-empty` while no item of this menu is shown. `EmptyText` renders its children only then.
+  Neither shows anything in server HTML.
+- `list()` (Base UI `Menu.List`): `role="menu"`, an `id` (default `<popup id>-list`),
+  `tabIndex={-1}`, `aria-labelledby` (the trigger).
+- `onMenuFilterChange(handler)`: `MenuFilterChangeEvent` (`stems:menu-filter-change`, from the
+  input, bubbles) with `value` and `reason`.
+
+Behavior:
+
+- With a `FilterProvider`, the trigger has `aria-haspopup="dialog"` and the popup
+  `role="dialog"` (it holds the searchbox and the menu list), as in Base UI.
+- Items, submenu triggers, and groups whose items all fail to match get `hidden`; they stay
+  mounted. If your styles set `display` on a group or item, add a `[hidden]` rule.
+- Opening with a click or the keyboard focuses the input; a keyboard open also highlights the
+  first item. Opening on hover, touch, or pen focuses the popup instead, so no on-screen keyboard
+  shows up.
+- Focus stays in the input: ArrowDown / ArrowUp move the highlight (virtual focus, wrapping with
+  `loopFocus`); Enter activates the highlighted item. Home / End jump to the ends only while the
+  input is empty and an item is highlighted, and ArrowLeft / ArrowRight move the caret unless the
+  input is empty or the highlighted item opens a submenu (then they open / close it). Characters
+  and modified keys edit the text: typeahead is off. Tab / Shift+Tab close the menu as usual.
+- Pointer highlights don't move focus out of the input.
+- After the query changes, a highlighted item that no longer matches loses the highlight, and
+  `autoHighlight` highlights the first match.
+- The query resets to `''` (reason `'popup-close'`) once the menu has finished closing. Cancel
+  that change to keep it.
+- Labels come from the rendered text, so server HTML shows every item even with a
+  `defaultValue`; items are hidden once they mount in the browser.
+
 ## Behavior notes
 
 - **Opening:** a pointer press on the trigger focuses the popup with nothing highlighted;
@@ -226,3 +345,7 @@ Change reasons: `'trigger-press'`, `'trigger-hover'`, `'outside-press'`, `'escap
 | radio group                        | `data-disabled`                                                    | present when disabled                                                  |
 | sub-trigger                        | `data-popup-open`                                                  | present while its submenu is open                                      |
 | separator                          | `data-orientation`                                                 | `horizontal` / `vertical`                                              |
+| filter input                       | `data-highlighted`                                                 | focused, and no item is highlighted by the keyboard                    |
+| filter clear                       | `data-disabled`, `hidden`                                          | `hidden` while the query is empty                                      |
+| filter empty                       | `data-empty`                                                       | present while no item matches                                          |
+| item, sub-trigger, group           | `hidden`                                                           | set by the filter for non-matching items                               |

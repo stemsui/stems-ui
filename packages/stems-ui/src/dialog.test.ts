@@ -97,3 +97,28 @@ describe('dialog (server render)', () => {
     expect(getTag(html, /<dialog[^>]*class="popup"[^>]*>/)).not.toContain('data-nested=')
   })
 })
+
+describe('dialog detached triggers (server render)', () => {
+  it('renders a detached trigger closed', async () => {
+    let h = dialog.createHandle<string>()
+    let html = await renderToString(
+      createElement(
+        'div',
+        {},
+        createElement('button', { mix: dialog.trigger({ handle: h, payload: 'x' }) }, 'Detached'),
+        createElement(
+          dialog.Context,
+          { handle: h, defaultOpen: false },
+          createElement('dialog', { class: 'popup', mix: dialog.popup() }, 'Body'),
+        ),
+      ),
+    )
+    let trigger = getTag(html, /<button[^>]*>Detached/)
+    expect(trigger).toContain('type="button"')
+    expect(trigger).toContain('aria-haspopup="dialog"')
+    expect(trigger).toContain('aria-expanded="false"')
+    expect(trigger).not.toContain('aria-controls')
+    expect(trigger).not.toContain('data-popup-open')
+    expect(getTag(html, /<dialog[^>]*class="popup"[^>]*>/)).toContain('data-closed=""')
+  })
+})

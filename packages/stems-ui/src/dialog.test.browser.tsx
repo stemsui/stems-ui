@@ -577,3 +577,130 @@ describe('dialog', () => {
     })
   })
 })
+
+describe('dialog detached triggers', () => {
+  function setupDetached(t: T, props: dialog.DialogContextProps<string> = {}) {
+    addStyle(t, popupCss)
+    let h = dialog.createHandle<string>()
+    let result = render(
+      <div>
+        <button id="t1" mix={dialog.trigger({ handle: h, payload: 'One' })}>
+          One
+        </button>
+        <button id="t2" mix={dialog.trigger({ handle: h, payload: 'Two' })}>
+          Two
+        </button>
+        <dialog.Context handle={h} {...props}>
+          {({ payload }) => (
+            <dialog class="popup" mix={dialog.popup()}>
+              <h2 mix={dialog.title()}>Edit</h2>
+              <p class="payload">{payload ?? 'none'}</p>
+              <button class="close" mix={dialog.close()}>
+                Close
+              </button>
+            </dialog>
+          )}
+        </dialog.Context>
+      </div>,
+    )
+    t.after(result.cleanup)
+    let popup = result.$('dialog.popup') as HTMLDialogElement
+    return {
+      ...result,
+      h,
+      popup,
+      t1: result.$('#t1') as HTMLButtonElement,
+      t2: result.$('#t2') as HTMLButtonElement,
+      payload: () => result.$('.payload')!.textContent,
+    }
+  }
+
+  it('wires ARIA once the Context renders', async (t) => {
+    let { t1, t2, popup, act } = setupDetached(t)
+    await act(() => {})
+    for (let trigger of [t1, t2]) {
+      expect(trigger.getAttribute('type')).toBe('button')
+      expect(trigger.getAttribute('aria-haspopup')).toBe('dialog')
+      expect(trigger.getAttribute('aria-expanded')).toBe('false')
+      expect(trigger.getAttribute('aria-controls')).toBe(popup.id)
+    }
+  })
+
+  it('opens from a detached trigger, shows its payload, and returns focus to it', async (t) => {
+    let { t1, t2, popup, payload, act, h } = setupDetached(t)
+    t2.focus()
+    await act(() => t2.click())
+    await act(() => {})
+    expect(popup.open).toBe(true)
+    expect(popup.matches(':modal')).toBe(true)
+    expect(h.isOpen).toBe(true)
+    expect(payload()).toBe('Two')
+    expect(t2.getAttribute('aria-expanded')).toBe('true')
+    expect(t2.hasAttribute('data-popup-open')).toBe(true)
+    expect(t1.getAttribute('aria-expanded')).toBe('false')
+
+    escape()
+    await waitFor(() => !popup.open)
+    await act(() => {})
+    expect(document.activeElement).toBe(t2)
+    expect(t2.getAttribute('aria-expanded')).toBe('false')
+    expect(h.isOpen).toBe(false)
+
+    await act(() => t1.click())
+    await act(() => {})
+    expect(payload()).toBe('One')
+    expect(t1.getAttribute('aria-expanded')).toBe('true')
+  })
+
+  it('opens imperatively, with a trigger or a payload', async (t) => {
+    let reasons: string[] = []
+    let { h, popup, payload, t1, act } = setupDetached(t, {
+      onOpenChange: (open, details) => reasons.push(`${open}:${details.reason}`),
+    })
+    await act(() => h.open('t1'))
+    await act(() => {})
+    expect(popup.open).toBe(true)
+    expect(payload()).toBe('One')
+    expect(t1.getAttribute('aria-expanded')).toBe('true')
+    await act(() => h.close())
+    await waitFor(() => !popup.open)
+
+    await act(() => h.openWithPayload('Custom'))
+    await act(() => {})
+    expect(popup.open).toBe(true)
+    expect(payload()).toBe('Custom')
+    await act(() => h.close())
+    await waitFor(() => !popup.open)
+    expect(reasons).toEqual([
+      'true:imperative-action',
+      'false:imperative-action',
+      'true:imperative-action',
+      'false:imperative-action',
+    ])
+  })
+
+  it('treats detached triggers as inside for a non-modal dialog', async (t) => {
+    let reasons: string[] = []
+    let { t1, t2, popup, act } = setupDetached(t, {
+      modal: false,
+      onOpenChange: (open, details) => reasons.push(`${open}:${details.reason}`),
+    })
+    await act(() => t1.click())
+    await act(() => {})
+    expect(popup.open).toBe(true)
+    let rect = t2.getBoundingClientRect()
+    await act(() => pressAt(t2, rect.left + 2, rect.top + 2))
+    await waitFor(() => !popup.open)
+    // The press on the other trigger is a trigger press, not an outside press.
+    expect(reasons).toEqual(['true:trigger-press', 'false:trigger-press'])
+  })
+
+  it('follows a controlled triggerId', async (t) => {
+    let { t1, t2, payload, act } = setupDetached(t, { open: true, triggerId: 't2' })
+    await act(() => {})
+    await act(() => {})
+    expect(payload()).toBe('Two')
+    expect(t2.getAttribute('aria-expanded')).toBe('true')
+    expect(t1.getAttribute('aria-expanded')).toBe('false')
+  })
+})

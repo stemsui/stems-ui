@@ -47,6 +47,14 @@ The parts, options, behavior, and styling hooks are the same as in
 An alert dialog nested in a dialog (or a dialog nested in an alert dialog) takes part in the
 same nesting: `data-nested`, `data-nested-dialog-open`, and `--nested-dialogs`.
 
+## Detached triggers
+
+`alertDialog.createHandle()` works like [`dialog.createHandle()`](../dialog/README.md#detached-triggers):
+pass the handle to `<alertDialog.Context handle>` and to `alertDialog.trigger({ handle,
+payload })` anywhere in the document; the `Context`'s `children` may be a function of
+`{ payload }`. The handle has `isOpen`, `open(triggerId?)`, `openWithPayload(payload)`, and
+`close()`, and the `Context` takes `triggerId` / `defaultTriggerId`.
+
 ## Styling hooks
 
 | Part         | Attribute / variable                                                                                                                                                  |

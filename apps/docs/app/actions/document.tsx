@@ -1,7 +1,19 @@
 import type { Handle, RemixNode } from 'remix/component'
+import { unsafeHTML } from 'remix/component'
 import { ImportMap } from 'remix/component/server'
 
 import { scriptEntry } from '../assets.ts'
+import { THEME_STORAGE_KEY } from '../ui/public/theme-toggle.tsx'
+
+// Runs before first paint so the page never flashes the wrong theme: a saved choice wins,
+// otherwise follow the OS setting.
+const themeScript = `(() => {
+  try {
+    let saved = localStorage.getItem(${JSON.stringify(THEME_STORAGE_KEY)})
+    let dark = saved ? saved === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches
+    document.documentElement.classList.toggle('dark', dark)
+  } catch {}
+})()`
 
 export interface DocumentProps {
   children?: RemixNode
@@ -21,6 +33,7 @@ export function Document(handle: Handle<DocumentProps>) {
           <meta name="viewport" content="width=device-width, initial-scale=1" />
           <meta name="color-scheme" content="light dark" />
           <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+          <script innerHTML={unsafeHTML(themeScript)} />
           <title>{title}</title>
           <link rel="stylesheet" href="/styles.css" />
           {head}

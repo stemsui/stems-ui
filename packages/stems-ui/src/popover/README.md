@@ -46,7 +46,7 @@ Control the state with `open` and `onOpenChange(open, details)`, or let the cont
 - **Render nested popovers inside their parent's popup** (in the DOM), so presses and focus
   inside the child count as inside the parent.
 - `--positioner-width` / `--positioner-height` / `--popup-width` / `--popup-height`, the
-  Viewport part, `createHandle()` / detached triggers / payloads, `actionsRef`,
+  Viewport part, `actionsRef`,
   `collisionAvoidance`, `collisionBoundary`, `sticky`, `positionMethod`, and
   `disableAnchorTracking` are not supported. Collision handling flips to the opposite side and
   clamps to the viewport; an oversized popup gets an inline `max-width` / `max-height`.
@@ -116,6 +116,49 @@ size-full`, and reset the UA popover `margin`, `border`, `padding`, `background`
 
 `'trigger-press'`, `'trigger-hover'`, `'outside-press'`, `'escape-key'`, `'close-press'`,
 `'focus-out'`, and `'none'` (state changed through the controlled `open` prop).
+
+## Detached triggers
+
+Base UI's `createHandle()`: triggers can live anywhere in the document, outside the `Context`,
+linked by a handle. Each trigger can pass a `payload`, so one popup can serve many triggers with
+different data.
+
+```tsx
+import * as popover from 'stems-ui/popover'
+
+let people = popover.createHandle<{ name: string }>()
+
+// Anywhere, e.g. in a table row:
+<button mix={popover.trigger({ handle: people, payload: { name: 'Ada' } })}>Ada</button>
+<button mix={popover.trigger({ handle: people, payload: { name: 'Grace' } })}>Grace</button>
+
+// Elsewhere:
+<popover.Context handle={people}>
+  {({ payload }) => <div mix={popover.popup()}>{payload?.name}</div>}
+</popover.Context>
+```
+
+- `createHandle<Payload>()` returns the handle. Pass it to the `Context` (`handle` prop, read
+  once) and to each detached `trigger({ handle, payload })` (read on the trigger's first
+  render). `Payload` types `payload` in the `Context`'s children function.
+- Detached triggers register with the handle, so they behave like triggers inside the
+  `Context`: `aria-expanded`, `aria-controls`, and `data-popup-open` follow the popup, the popup anchors to the active trigger, focus returns to it, and a
+  press on another trigger counts as inside (it moves the popup instead of dismissing it).
+- The active trigger's `payload` is `{ payload }` in a children render function (re-run each
+  time the `Context` renders) and `payload` on the context value
+  (`handle.context.get(popover.Context).payload`). It's `undefined` until a trigger has been
+  active, and stays while the popup animates out. A children function only works with JSX
+  (`createElement` rejects function children). `payload` also works on triggers inside the
+  `Context`.
+- Handle methods: `isOpen`, `open(triggerId?)` (opens, or moves an open popup, to the trigger
+  with that `id`; reason `'imperative-action'`), `close()`. They act on the mounted `Context`
+  and are ignored while none is mounted. A remounted `Context` starts fresh.
+- `Context` props `triggerId` (controlled, pair with `open`; store `details.trigger?.id` from
+  `onOpenChange`) and `defaultTriggerId` pick the active trigger by element `id`.
+- Detached triggers aren't re-rendered by the `Context`; they update their state attributes
+  directly when it renders. On the server nothing is shared (a handle is usually a module-level
+  singleton), so a detached trigger renders closed and without `aria-controls`; it gets
+  `aria-controls` once the `Context` mounts in the browser.
 
 ## Behavior notes
 

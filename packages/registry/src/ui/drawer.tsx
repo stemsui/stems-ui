@@ -9,18 +9,20 @@ import { cn } from '#stems/lib/utils.ts'
  *   popup:   the native <dialog> (`:open` while shown), data-open / data-closed,
  *            data-starting-style / data-ending-style, data-swipe-direction, data-swiping,
  *            data-swipe-dismiss, data-nested, data-nested-drawer-open,
- *            data-nested-drawer-swiping, --drawer-swipe-movement-x / -y,
- *            --drawer-swipe-progress, --drawer-swipe-strength, --nested-drawers,
- *            --drawer-frontmost-height
+ *            data-nested-drawer-swiping, data-expanded, --drawer-swipe-movement-x / -y,
+ *            --drawer-swipe-progress, --drawer-swipe-strength, --drawer-snap-point-offset,
+ *            --drawer-height, --nested-drawers, --drawer-frontmost-height
+ *   swipe area: data-open / data-closed, data-swiping, data-disabled, data-swipe-direction
  *
  * Visuals follow shadcn's Base UI drawer. Differences from shadcn's markup:
  * - The popup is a native <dialog> in the top layer, so there's no Portal or Viewport, and the
  *   overlay is the dialog's `::backdrop` (it inherits --drawer-swipe-progress from the dialog).
  *   The UA's modal-dialog insets and max sizes are reset per swipe direction.
- * - Snap points are not supported yet.
+ * - `DrawerSwipeArea` (Base UI's `Drawer.SwipeArea`) is a Stems addition; shadcn has none.
  */
 
 interface DrawerStyleContext {
+  readonly hasSnapPoints: boolean
   readonly modal: drawer.DrawerModal
   readonly showSwipeHandle: boolean
   readonly swipeDirection: drawer.DrawerSwipeDirection
@@ -33,6 +35,10 @@ export type DrawerProps = drawer.DrawerContextProps & {
 
 export function Drawer(handle: Handle<DrawerProps, DrawerStyleContext>) {
   handle.context.set({
+    get hasSnapPoints() {
+      let points = handle.props.snapPoints
+      return points !== undefined && points.length > 0
+    },
     get modal() {
       return handle.props.modal ?? true
     },
@@ -54,13 +60,13 @@ export type DrawerTriggerProps = Props<'button'> & drawer.DrawerTriggerOptions
 
 export function DrawerTrigger(handle: Handle<DrawerTriggerProps>) {
   return () => {
-    let { class: className, mix, disabled, ...props } = handle.props
+    let { class: className, mix, disabled, handle: drawerHandle, payload, ...props } = handle.props
     return (
       <button
         data-slot="drawer-trigger"
         {...props}
         class={cn(className)}
-        mix={[drawer.trigger({ disabled }), mix]}
+        mix={[drawer.trigger({ disabled, handle: drawerHandle, payload }), mix]}
       />
     )
   }
@@ -101,7 +107,7 @@ export function DrawerSwipeHandle(handle: Handle<Props<'div'>>) {
 
 /** shadcn's DrawerOverlay, applied to the popup's `::backdrop`. */
 const overlayClass =
-  'backdrop:min-h-dvh backdrop:bg-black/10 backdrop:opacity-[max(var(--drawer-overlay-min-opacity,0),calc(1-var(--drawer-swipe-progress)))] backdrop:transition-opacity backdrop:duration-450 backdrop:ease-[cubic-bezier(0.32,0.72,0,1)] data-starting-style:backdrop:opacity-0 data-ending-style:backdrop:opacity-0 data-ending-style:backdrop:duration-[calc(var(--drawer-swipe-strength)*400ms)] data-swiping:backdrop:duration-0 supports-backdrop-filter:backdrop:backdrop-blur-xs data-nested:backdrop:bg-transparent data-nested:backdrop:backdrop-blur-none'
+  'data-snap-points:[--drawer-overlay-min-opacity:0.5] backdrop:min-h-dvh backdrop:bg-black/10 backdrop:opacity-[max(var(--drawer-overlay-min-opacity,0),calc(1-var(--drawer-swipe-progress)))] backdrop:transition-opacity backdrop:duration-450 backdrop:ease-[cubic-bezier(0.32,0.72,0,1)] data-starting-style:backdrop:opacity-0 data-ending-style:backdrop:opacity-0 data-ending-style:backdrop:duration-[calc(var(--drawer-swipe-strength)*400ms)] data-swiping:backdrop:duration-0 supports-backdrop-filter:backdrop:backdrop-blur-xs data-nested:backdrop:bg-transparent data-nested:backdrop:backdrop-blur-none'
 
 const popupClass = [
   // Base. (`max-w-none` and the per-direction `*-auto` insets undo the UA modal-dialog styles.)
@@ -111,7 +117,7 @@ const popupClass = [
   // Bleed.
   'after:pointer-events-none after:absolute after:bg-(--drawer-bleed-background,var(--color-popover)) data-[swipe-axis=x]:after:inset-y-0 data-[swipe-axis=x]:after:w-(--bleed) data-[swipe-axis=y]:after:inset-x-0 data-[swipe-axis=y]:after:h-(--bleed) data-[swipe-direction=down]:after:top-full data-[swipe-direction=left]:after:right-full data-[swipe-direction=right]:after:left-full data-[swipe-direction=up]:after:bottom-full',
   // Sizing.
-  '[--drawer-content-height:var(--drawer-height,auto)] data-[swipe-axis=x]:[--drawer-content-width:75%] data-[swipe-axis=y]:[--drawer-content-max-height:calc(100dvh-6rem)] data-[swipe-axis=x]:sm:[--drawer-content-width:24rem]',
+  '[--drawer-content-height:var(--drawer-height,auto)] data-[swipe-axis=x]:[--drawer-content-width:75%] data-[swipe-axis=y]:[--drawer-content-max-height:calc(100dvh-6rem)] data-[swipe-axis=y]:data-snap-points:[--drawer-content-height:100dvh] data-[swipe-axis=x]:sm:[--drawer-content-width:24rem]',
   // Stack.
   '[--bleed:3rem] [--peek:1rem] [--stack-height:var(--drawer-frontmost-height,var(--drawer-height,0px))] [--stack-peek-offset:max(0px,calc((var(--nested-drawers)-var(--stack-progress))*var(--peek)))] [--stack-progress:clamp(0,var(--drawer-swipe-progress),1)] [--stack-scale-base:max(0,calc(1-(var(--nested-drawers)*var(--stack-step))))] [--stack-scale:clamp(0,calc(var(--stack-scale-base)+(var(--stack-step)*var(--stack-progress))),1)] [--stack-shrink:calc(1-var(--stack-scale))] [--stack-step:0.05]',
   // Transitions.
@@ -145,6 +151,7 @@ export function DrawerContent(handle: Handle<DrawerContentProps>) {
       <dialog
         data-slot="drawer-popup"
         data-swipe-axis={axis}
+        data-snap-points={context?.hasSnapPoints ? '' : undefined}
         {...props}
         class={cn(popupClass, modal === true && overlayClass, className)}
         mix={[drawer.popup({ initialFocus, finalFocus }), mix]}
@@ -158,6 +165,33 @@ export function DrawerContent(handle: Handle<DrawerContentProps>) {
           {children}
         </div>
       </dialog>
+    )
+  }
+}
+
+export type DrawerSwipeAreaProps = Props<'div'> & drawer.DrawerSwipeAreaOptions
+
+/**
+ * An invisible strip along the screen edge the drawer opens from; swiping from it opens the
+ * drawer and the popup follows the pointer. Place it inside `Drawer`.
+ */
+export function DrawerSwipeArea(handle: Handle<DrawerSwipeAreaProps>) {
+  let context = handle.context.get(Drawer) as DrawerStyleContext | undefined
+
+  return () => {
+    let { class: className, mix, disabled, swipeDirection, ...props } = handle.props
+    let edge = context?.swipeDirection ?? 'down'
+    return (
+      <div
+        data-slot="drawer-swipe-area"
+        data-edge={edge}
+        {...props}
+        class={cn(
+          'fixed z-40 data-[edge=down]:inset-x-0 data-[edge=down]:bottom-0 data-[edge=down]:h-6 data-[edge=left]:inset-y-0 data-[edge=left]:left-0 data-[edge=left]:w-6 data-[edge=right]:inset-y-0 data-[edge=right]:right-0 data-[edge=right]:w-6 data-[edge=up]:inset-x-0 data-[edge=up]:top-0 data-[edge=up]:h-6',
+          className,
+        )}
+        mix={[drawer.swipeArea({ disabled, swipeDirection }), mix]}
+      />
     )
   }
 }
@@ -219,5 +253,9 @@ export function DrawerDescription(handle: Handle<Props<'p'>>) {
   }
 }
 
-export { onDrawerChange } from 'stems-ui/drawer'
-export type { DrawerChangeEvent } from 'stems-ui/drawer'
+export { onDrawerChange, onDrawerSnapPointChange } from 'stems-ui/drawer'
+export type {
+  DrawerChangeEvent,
+  DrawerSnapPoint,
+  DrawerSnapPointChangeEvent,
+} from 'stems-ui/drawer'

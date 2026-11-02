@@ -6,8 +6,15 @@
  * in `lib/menu.tsx` and is shared with `stems-ui/context-menu`.
  */
 
+import type { MenuHandle } from './lib/menu.tsx'
 import {
+  createMenuHandle,
   CheckboxItemContext as CheckboxItemProvider,
+  EmptyText as EmptyTextComponent,
+  filterClear,
+  filterEmpty,
+  filterInput,
+  list as listMixin,
   MenuContext,
   RadioGroupContext as RadioGroupProvider,
   RadioItemContext as RadioItemProvider,
@@ -28,6 +35,19 @@ import {
   submenuTrigger as submenuTriggerMixin,
   trigger as triggerMixin,
 } from './lib/menu.tsx'
+import { MenuFilterProvider } from './lib/menu-filter.ts'
+
+export {
+  MenuFilterChangeEvent,
+  onMenuFilterChange,
+  type MenuFilterChangeDetails,
+  type MenuFilterChangeReason,
+  type MenuFilterContextValue,
+  type MenuFilterFunction,
+  type MenuFilterProviderProps,
+} from './lib/menu-filter.ts'
+
+export { containsText, startsWithText } from './lib/text-filter.ts'
 
 export {
   MenuChangeEvent,
@@ -37,8 +57,11 @@ export {
   type CheckboxItemContextProps,
   type CheckboxItemContextValue,
   type MenuCheckboxItemOptions,
+  type MenuEmptyTextProps,
+  type MenuFilterClearOptions,
   type MenuContextProps,
   type MenuContextValue,
+  type MenuHandle,
   type MenuHighlightDetails,
   type MenuHighlightReason,
   type MenuIndicatorOptions,
@@ -71,10 +94,20 @@ export type {
   PopupSide as MenuSide,
 } from './lib/popup.ts'
 
+export type { PopupPayloadState as MenuPayloadState } from './lib/popup-handle.ts'
+
+/**
+ * Creates a handle for triggers rendered outside the menu's `Context` (Base UI's
+ * `Menu.createHandle()`): pass it to `<menu.Context handle>` and `menu.trigger({ handle,
+ * payload })`. `isOpen`, `open(triggerId?)`, `close()`.
+ */
+export const createHandle: <Payload = unknown>() => MenuHandle<Payload> = createMenuHandle
+
 /**
  * Provider that owns the menu state (Base UI `Menu.Root`). Props: `open` / `defaultOpen` /
  * `onOpenChange(open, details)`, `onOpenChangeComplete`, `modal` (default `true`), `loopFocus`
- * (default `true`), `orientation`, `disabled`, `highlightItemOnHover`, `onItemHighlighted`.
+ * (default `true`), `orientation`, `disabled`, `highlightItemOnHover`, `onItemHighlighted`,
+ * `handle`, `triggerId` / `defaultTriggerId`. `children` may be a function of `{ payload }`.
  */
 export const Context = MenuContext
 
@@ -97,7 +130,8 @@ export const CheckboxItemContext = CheckboxItemProvider
 /**
  * The button that opens the menu: `aria-haspopup="menu"`, `aria-expanded`, `aria-controls`,
  * `data-popup-open`, `data-pressed`, `data-disabled`. ArrowDown / ArrowUp open it and focus the
- * first / last item. Options: `disabled`, `openOnHover`, `delay` (100), `closeDelay`.
+ * first / last item. Options: `disabled`, `openOnHover`, `delay` (100), `closeDelay`, and
+ * `handle` / `payload` for a trigger outside the `Context`.
  */
 export const trigger = triggerMixin
 
@@ -160,3 +194,37 @@ export const radioItemIndicator = radioItemIndicatorMixin
  * `label`, `disabled`, `openOnHover` (default `true`), `delay` (100), `closeDelay` (0).
  */
 export const submenuTrigger = submenuTriggerMixin
+
+/**
+ * Makes the menu (or submenu) inside it filterable (Base UI `Menu.FilterProvider`): wrap a
+ * `Context` or `SubmenuContext` and add `input()`, `list()`, and optionally `clear()` /
+ * `empty()` to its popup. Props: `value` / `defaultValue` / `onValueChange(value, details)`,
+ * `autoHighlight` (`false`), `filter` (default: contains, ignoring case and diacritics; `null`
+ * to filter yourself), `locale`.
+ */
+export const FilterProvider = MenuFilterProvider
+
+/**
+ * The filter input (Base UI `Menu.Input`): `role="searchbox"`, `aria-controls`,
+ * `aria-activedescendant`, `data-highlighted`. Focus stays here while the arrow keys move the
+ * highlight; Enter activates the highlighted item; typeahead is off.
+ */
+export const input = filterInput
+
+/** Clears the query and refocuses the input (Base UI `Menu.Clear`); `hidden` while empty. */
+export const clear = filterClear
+
+/**
+ * The "no results" live region (Base UI `Menu.Empty`): `role="status"`, `data-empty` while no
+ * item matches. Put the message in `EmptyText`.
+ */
+export const empty = filterEmpty
+
+/** Renders its children only while no item matches; place it inside `empty()`. */
+export const EmptyText = EmptyTextComponent
+
+/**
+ * Wraps the items (Base UI `Menu.List`). In a filterable menu it has `role="menu"` and the popup
+ * becomes a `role="dialog"` holding the input and the list.
+ */
+export const list = listMixin

@@ -1,4 +1,5 @@
 import { clientEntry, type Handle } from 'remix/component'
+import * as popover from 'stems-ui/popover'
 import { buttonVariants } from '@stemsui/registry/ui/button.tsx'
 import { Input } from '@stemsui/registry/ui/input.tsx'
 import { Label } from '@stemsui/registry/ui/label.tsx'
@@ -107,6 +108,64 @@ export const PopoverDemo = clientEntry(import.meta.url, function PopoverDemo(han
       <p class="text-sm text-muted-foreground" data-testid="popover-result">
         Last change: <span class="font-medium text-foreground">{lastChange}</span>
       </p>
+
+      <DetachedTriggers />
     </div>
   )
 })
+
+interface Person {
+  name: string
+  role: string
+  email: string
+}
+
+const people: Person[] = [
+  { name: 'Ada Lovelace', role: 'Analyst', email: 'ada@example.com' },
+  { name: 'Grace Hopper', role: 'Compiler lead', email: 'grace@example.com' },
+  { name: 'Alan Turing', role: 'Researcher', email: 'alan@example.com' },
+]
+
+/**
+ * Detached triggers: the triggers live outside the `Popover`, linked by a handle. Each passes a
+ * `payload`; the one popover shows the active trigger's person and anchors to that trigger.
+ */
+function DetachedTriggers() {
+  let people$ = popover.createHandle<Person>()
+
+  return () => (
+    <div class="flex flex-col items-center gap-3" data-testid="detached">
+      <p class="text-sm text-muted-foreground">Detached triggers sharing one popover</p>
+      <div class="flex flex-wrap justify-center gap-2">
+        {people.map((person, index) => (
+          <PopoverTrigger
+            id={`detached-person-${index}`}
+            class={buttonVariants({ variant: 'outline', size: 'sm' })}
+            data-testid={`detached-${index}`}
+            handle={people$}
+            payload={person}
+          >
+            {person.name.split(' ')[0]}
+          </PopoverTrigger>
+        ))}
+      </div>
+
+      <Popover handle={people$}>
+        {({ payload }) => (
+          <PopoverContent class="w-64" data-testid="detached-content">
+            <PopoverHeader>
+              <PopoverTitle>{payload?.name ?? 'Someone'}</PopoverTitle>
+              <PopoverDescription>{payload?.role}</PopoverDescription>
+            </PopoverHeader>
+            <a
+              class={buttonVariants({ variant: 'secondary', size: 'sm' })}
+              href={`mailto:${payload?.email ?? ''}`}
+            >
+              Email {payload?.name.split(' ')[0]}
+            </a>
+          </PopoverContent>
+        )}
+      </Popover>
+    </div>
+  )
+}

@@ -13,6 +13,8 @@ import type {
 
 import { splitOptions } from './lib/collapsible-panel.ts'
 import {
+  attachPopupHandle,
+  bindPopupTrigger,
   createPopupArrow,
   createPopupBackdrop,
   createPopupClose,
@@ -26,8 +28,13 @@ import type {
   PopupStateProps,
   PopupStore,
   PopupSurfaceOptions,
+  PopupTriggerIdProps,
   PopupTriggerOptions,
 } from './lib/popup.ts'
+import { createPopupHandle, resolvePayloadChildren } from './lib/popup-handle.ts'
+import type { PopupHandle, PopupPayloadChildren } from './lib/popup-handle.ts'
+
+export type { PopupPayloadState as PopoverPayloadState } from './lib/popup-handle.ts'
 
 export type {
   PopupAlign as PopoverAlign,
@@ -61,12 +68,39 @@ export class PopoverChangeEvent extends Event {
   }
 }
 
-export interface PopoverContextProps extends PopupStateProps {
-  children?: RemixNode
+/**
+ * Links a `Context` with triggers rendered outside it (Base UI's `Popover.Handle`). Create one
+ * with `createHandle()`. `isOpen`, `open(triggerId?)`, and `close()` act on the attached
+ * `Context` and are ignored while none is mounted.
+ */
+export type PopoverHandle<Payload = unknown> = PopupHandle<Payload, 'popover'>
+
+/** Creates a handle for detached triggers (Base UI's `Popover.createHandle()`). */
+export function createHandle<Payload = unknown>(): PopoverHandle<Payload> {
+  return createPopupHandle<Payload, 'popover'>('popover')
 }
 
-/** Trigger options: `disabled`, and Base UI's `openOnHover` / `delay` / `closeDelay`. */
-export interface PopoverTriggerOptions extends PopupTriggerOptions {}
+export interface PopoverContextProps<Payload = unknown>
+  extends PopupStateProps, PopupTriggerIdProps {
+  /**
+   * Nodes, or a function of `{ payload }` (the active trigger's `payload`), re-run whenever the
+   * provider renders.
+   */
+  children?: PopupPayloadChildren<RemixNode, Payload>
+  /** Connects triggers rendered outside the `Context` (`trigger({ handle })`). Read once. */
+  handle?: PopoverHandle<Payload>
+}
+
+/**
+ * Trigger options: `disabled`, Base UI's `openOnHover` / `delay` / `closeDelay`, and the
+ * detached-trigger options `handle` / `payload`.
+ */
+export interface PopoverTriggerOptions extends PopupTriggerOptions {
+  /** The popover to control when the trigger is outside its `Context`. Read on first render. */
+  handle?: PopoverHandle<any>
+  /** Data for the popup while this trigger is active (`payload` in the `Context`). */
+  payload?: unknown
+}
 
 /**
  * Popup options: Base UI's Positioner props (`side`, `align`, `sideOffset`, `alignOffset`,
@@ -83,18 +117,21 @@ export interface PopoverContextValue extends PopupStore {}
 function PopoverProvider(
   handle: Handle<PopoverContextProps, PopoverContextValue>,
 ): () => RemixNode {
+  let popupHandle = handle.props.handle
   let store = createPopupStore({
     id: handle.id,
     getProps: () => handle.props,
     update: () => handle.update(),
     signal: handle.signal,
     createChangeEvent: (open, details) => new PopoverChangeEvent(open, details.reason),
+    handle: popupHandle,
   })
   handle.context.set(store)
+  attachPopupHandle(popupHandle, store, store, handle.signal)
 
   return () => {
     store.sync()
-    return handle.props.children
+    return resolvePayloadChildren(handle.props.children, store.payload)
   }
 }
 
@@ -104,9 +141,14 @@ function getStore(handle: MixinHandle<HTMLElement>): PopoverContextValue {
 
 const triggerMixin: MixinFactory<HTMLElement, [options?: PopoverTriggerOptions], ElementProps> =
   createMixin<HTMLElement, [options?: PopoverTriggerOptions], ElementProps>((handle, hostType) => {
-    let trigger = createPopupTrigger(handle, hostType, getStore(handle), { haspopup: 'dialog' })
+    let binding = bindPopupTrigger(handle, getStore(handle) as PopoverContextValue | undefined)
+    let trigger = createPopupTrigger(handle, hostType, binding.context, {
+      haspopup: 'dialog',
+      isDetached: () => binding.detached,
+    })
     return (options, props) => {
       ;[options] = splitOptions(options, props)
+      binding.bind(options?.handle, trigger.refresh)
       return trigger.render(options)
     }
   })
@@ -177,16 +219,17 @@ const closeMixin: MixinFactory<HTMLElement, [], ElementProps> = createMixin<
 /**
  * Provider that owns the open state. Props: `open` / `defaultOpen` /
  * `onOpenChange(open, details)`, `onOpenChangeComplete`, `modal` (`false` | `true` |
- * `'trap-focus'`).
+ * `'trap-focus'`), `handle`, `triggerId` / `defaultTriggerId`. `children` may be a function of
+ * `{ payload }`.
  */
-export const Context: (
-  handle: Handle<PopoverContextProps, PopoverContextValue>,
-) => () => RemixNode = PopoverProvider
+export const Context: <Payload = unknown>(
+  handle: Handle<PopoverContextProps<Payload>, PopoverContextValue>,
+) => () => RemixNode = PopoverProvider as any
 
 /**
  * The button that toggles the popover: `aria-haspopup="dialog"`, `aria-expanded`,
  * `aria-controls`, `data-popup-open`, `data-disabled`. Options: `disabled`, `openOnHover`,
- * `delay`, `closeDelay`.
+ * `delay`, `closeDelay`, and `handle` / `payload` for a trigger outside the `Context`.
  */
 export const trigger = triggerMixin
 

@@ -311,13 +311,19 @@ child component's growing array output is inserted after the parent's later sibl
       `libflite` (`sudo npx playwright install-deps`). Check native `<dialog>` Escape routing
       there specifically.
 - [ ] Touch devices and screen readers (VoiceOver, NVDA) for every component.
-- [ ] Close high-value `openGaps`: detached triggers / `createHandle`, drawer snap points,
-      filterable menu, `eventDetails` everywhere, select/menu server HTML labels.
+- [x] Detached triggers (`createHandle()` + payloads, imperative open/close) for popover,
+      dialog, alert dialog, drawer, menu, tooltip, preview card (`lib/popup-handle.ts`).
+- [x] Drawer snap points + swipe-to-open area; filterable menu (Base UI 1.9 parts), sharing
+      the combobox's matcher via `lib/text-filter.ts`.
+- [ ] Remaining `openGaps`: `eventDetails` (reason/cancel) everywhere, select/menu server HTML
+      labels, Viewport parts, collision `shift`/`sticky`.
 - [ ] Report `docs/upstream-issues.md` to Remix; drop workarounds as fixes land. CSP Provider
       stays blocked until Remix adds style nonces.
-- [ ] Docs site: per-component API reference generated from the READMEs, keyboard tables,
-      theming guide (swap shadcn themes), installation page, `@stemsui/init` item that automates
-      the Remix setup steps.
+- [x] Docs site: API reference on every component page rendered from the module READMEs,
+      demo source with copy buttons, guides (installation, theming, headless usage, Remix
+      notes), headless-only module pages, dark mode toggle.
+- [ ] `@stemsui/init` (shadcn items can't edit `package.json` `imports` or `tsconfig.json`, so
+      this likely needs a tiny `npx stems-ui init` script instead).
 - [ ] Publish: claim names, `stems-ui` 0.1.0 via Changesets, deploy the docs + registry, CI on
       GitHub.
 

@@ -10,6 +10,7 @@ import type {
 import {
   backdropMixin,
   closeMixin,
+  createDialogHandle,
   descriptionMixin,
   DialogRoot,
   popupMixin,
@@ -18,12 +19,16 @@ import {
   type DialogBackdropOptions,
   type DialogChangeReason,
   type DialogCloseOptions,
+  type DialogHandle,
   type DialogPopupOptions,
   type DialogRootProps,
   type DialogTriggerOptions,
 } from './lib/dialog-root.ts'
 
+export type { PopupPayloadState as AlertDialogPayloadState } from './lib/popup-handle.ts'
+
 export type {
+  DialogHandle as AlertDialogHandle,
   DialogActions as AlertDialogActions,
   DialogBackdropOptions as AlertDialogBackdropOptions,
   DialogChangeDetails as AlertDialogChangeDetails,
@@ -56,7 +61,17 @@ export class AlertDialogChangeEvent extends Event {
 }
 
 /** Alert dialogs are always modal and ignore outside presses, so those props don't exist. */
-export type AlertDialogContextProps = Omit<DialogRootProps, 'modal' | 'disablePointerDismissal'>
+export type AlertDialogContextProps<Payload = unknown> = Omit<
+  DialogRootProps<Payload>,
+  'modal' | 'disablePointerDismissal'
+>
+
+/**
+ * Creates a handle for triggers rendered outside the `Context` (Base UI's
+ * `AlertDialog.createHandle()`): `isOpen`, `open(triggerId?)`, `openWithPayload(payload)`,
+ * `close()`.
+ */
+export const createHandle: <Payload = unknown>() => DialogHandle<Payload> = createDialogHandle
 
 function createChangeEvent(open: boolean, reason: DialogChangeReason) {
   return new AlertDialogChangeEvent(open, reason)
@@ -65,27 +80,27 @@ function createChangeEvent(open: boolean, reason: DialogChangeReason) {
 function AlertDialogProvider(handle: Handle<AlertDialogContextProps>): () => RemixNode {
   return () => {
     let { children, ...props } = handle.props
-    return createElement(
-      DialogRoot,
-      {
-        ...props,
-        modal: true,
-        disablePointerDismissal: true,
-        _kind: 'alert-dialog',
-        _createEvent: createChangeEvent,
-      },
-      children,
-    )
+    // `children` may be a payload render function, which `createElement` rejects as a child.
+    return createElement(DialogRoot, {
+      ...props,
+      _children: children,
+      modal: true,
+      disablePointerDismissal: true,
+      _kind: 'alert-dialog',
+      _createEvent: createChangeEvent,
+    })
   }
 }
 
 /**
  * Provider that owns the open state. Props: `open` / `defaultOpen` / `onOpenChange` /
- * `onOpenChangeComplete`, `actionsRef`. Always modal; outside presses never dismiss it, Escape
- * does.
+ * `onOpenChangeComplete`, `actionsRef`, `handle`, `triggerId` / `defaultTriggerId`. Always
+ * modal; outside presses never dismiss it, Escape does. `children` may be a function of
+ * `{ payload }`.
  */
-export const Context: (handle: Handle<AlertDialogContextProps>) => () => RemixNode =
-  AlertDialogProvider
+export const Context: <Payload = unknown>(
+  handle: Handle<AlertDialogContextProps<Payload>>,
+) => () => RemixNode = AlertDialogProvider as any
 
 /** The button that opens the alert dialog. Same contract as `dialog.trigger()`. */
 export const trigger: MixinFactory<HTMLElement, [options?: DialogTriggerOptions], ElementProps> =

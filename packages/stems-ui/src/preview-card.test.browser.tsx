@@ -374,3 +374,66 @@ describe('preview-card', () => {
     await waitFor(() => isShown(popup))
   })
 })
+
+describe('preview card detached triggers', () => {
+  it('opens from detached links with their payloads and anchors to the active one', async (t) => {
+    addStyle(t, `${BASE_CSS} #l2 { left: 400px; }`)
+    let h = previewCard.createHandle<{ name: string }>()
+    let result = render(
+      <div>
+        <a
+          id="l1"
+          href="#one"
+          data-test-trigger
+          mix={previewCard.trigger({ handle: h, payload: { name: 'Ada' }, delay: 0 })}
+        >
+          Ada
+        </a>
+        <a
+          id="l2"
+          href="#two"
+          data-test-trigger
+          mix={previewCard.trigger({ handle: h, payload: { name: 'Grace' }, delay: 0 })}
+        >
+          Grace
+        </a>
+        <previewCard.Context handle={h}>
+          {({ payload }) => (
+            <div id="popup" data-test-popup mix={previewCard.popup()}>
+              {payload?.name ?? 'none'}
+            </div>
+          )}
+        </previewCard.Context>
+      </div>,
+    )
+    t.after(result.cleanup)
+    let l1 = result.$('#l1') as HTMLElement
+    let l2 = result.$('#l2') as HTMLElement
+    let popup = result.$('#popup') as HTMLElement
+    await result.act(() => {})
+    expect(l1.getAttribute('aria-expanded')).toBe(null)
+    expect(isOpen(l1)).toBe(false)
+
+    pointer(l2, 'pointerenter')
+    await waitFor(() => isOpen(l2))
+    await result.act(() => {})
+    expect(isShown(popup)).toBe(true)
+    expect(popup.textContent).toBe('Grace')
+    // Below #l2 (left 400, width 80): centered at 440.
+    await waitFor(() => Math.round(popup.getBoundingClientRect().left) === 340)
+    expect(Math.round(popup.getBoundingClientRect().top)).toBe(80)
+
+    // The pointer moving onto another trigger counts as inside: it moves the card.
+    pointer(l2, 'pointerleave', { relatedTarget: l1 })
+    pointer(l1, 'pointerenter')
+    await waitFor(() => isOpen(l1))
+    await result.act(() => {})
+    expect(isOpen(l2)).toBe(false)
+    expect(popup.textContent).toBe('Ada')
+    await waitFor(() => Math.round(popup.getBoundingClientRect().left) === 40)
+
+    await result.act(() => h.close())
+    await waitFor(() => !isOpen(l1))
+    expect(h.isOpen).toBe(false)
+  })
+})

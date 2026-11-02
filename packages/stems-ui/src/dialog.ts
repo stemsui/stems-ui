@@ -10,6 +10,7 @@ import type {
 import {
   backdropMixin,
   closeMixin,
+  createDialogHandle,
   descriptionMixin,
   DialogRoot,
   popupMixin,
@@ -18,12 +19,16 @@ import {
   type DialogBackdropOptions,
   type DialogChangeReason,
   type DialogCloseOptions,
+  type DialogHandle,
   type DialogPopupOptions,
   type DialogRootProps,
   type DialogTriggerOptions,
 } from './lib/dialog-root.ts'
 
+export type { PopupPayloadState as DialogPayloadState } from './lib/popup-handle.ts'
+
 export type {
+  DialogHandle,
   DialogActions,
   DialogBackdropOptions,
   DialogChangeDetails,
@@ -56,7 +61,14 @@ export class DialogChangeEvent extends Event {
   }
 }
 
-export type DialogContextProps = DialogRootProps
+export type DialogContextProps<Payload = unknown> = DialogRootProps<Payload>
+
+/**
+ * Creates a handle for triggers rendered outside the `Context` (Base UI's
+ * `Dialog.createHandle()`): pass it to `<dialog.Context handle>` and `dialog.trigger({ handle,
+ * payload })`. `isOpen`, `open(triggerId?)`, `openWithPayload(payload)`, `close()`.
+ */
+export const createHandle: <Payload = unknown>() => DialogHandle<Payload> = createDialogHandle
 
 function createChangeEvent(open: boolean, reason: DialogChangeReason) {
   return new DialogChangeEvent(open, reason)
@@ -65,25 +77,31 @@ function createChangeEvent(open: boolean, reason: DialogChangeReason) {
 function DialogProvider(handle: Handle<DialogContextProps>): () => RemixNode {
   return () => {
     let { children, ...props } = handle.props
-    return createElement(
-      DialogRoot,
-      { ...props, _kind: 'dialog', _createEvent: createChangeEvent },
-      children,
-    )
+    // `children` may be a payload render function, which `createElement` rejects as a child.
+    return createElement(DialogRoot, {
+      ...props,
+      _children: children,
+      _kind: 'dialog',
+      _createEvent: createChangeEvent,
+    })
   }
 }
 
 /**
  * Provider that owns the open state. Props: `open` / `defaultOpen` / `onOpenChange` /
  * `onOpenChangeComplete`, `modal` (`true` | `false` | `'trap-focus'`),
- * `disablePointerDismissal`, `actionsRef`.
+ * `disablePointerDismissal`, `actionsRef`, `handle`, `triggerId` / `defaultTriggerId`.
+ * `children` may be a function of `{ payload }`.
  */
-export const Context: (handle: Handle<DialogContextProps>) => () => RemixNode = DialogProvider
+export const Context: <Payload = unknown>(
+  handle: Handle<DialogContextProps<Payload>>,
+) => () => RemixNode = DialogProvider as any
 
 /**
  * The button that opens the dialog: `aria-haspopup="dialog"`, `aria-expanded`,
  * `aria-controls`, `data-popup-open`, `data-disabled`. Non-button hosts get `role="button"`,
- * `tabIndex`, and Enter/Space activation.
+ * `tabIndex`, and Enter/Space activation. Options: `disabled`, and `handle` / `payload` for a
+ * trigger outside the `Context`.
  */
 export const trigger: MixinFactory<HTMLElement, [options?: DialogTriggerOptions], ElementProps> =
   triggerMixin

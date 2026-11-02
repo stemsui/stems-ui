@@ -50,3 +50,32 @@ describe('alert dialog (server render)', () => {
     expect(getTag(html, /<button[^>]*class="trigger"[^>]*>/)).toContain('aria-expanded="true"')
   })
 })
+
+describe('alert-dialog detached triggers (server render)', () => {
+  it('renders a detached trigger closed', async () => {
+    let h = alertDialog.createHandle<string>()
+    let html = await renderToString(
+      createElement(
+        'div',
+        {},
+        createElement(
+          'button',
+          { mix: alertDialog.trigger({ handle: h, payload: 'x' }) },
+          'Detached',
+        ),
+        createElement(
+          alertDialog.Context,
+          { handle: h, defaultOpen: false },
+          createElement('dialog', { class: 'popup', mix: alertDialog.popup() }, 'Body'),
+        ),
+      ),
+    )
+    let trigger = getTag(html, /<button[^>]*>Detached/)
+    expect(trigger).toContain('type="button"')
+    expect(trigger).toContain('aria-haspopup="dialog"')
+    expect(trigger).toContain('aria-expanded="false"')
+    expect(trigger).not.toContain('aria-controls')
+    expect(trigger).not.toContain('data-popup-open')
+    expect(getTag(html, /<dialog[^>]*class="popup"[^>]*>/)).toContain('data-closed=""')
+  })
+})

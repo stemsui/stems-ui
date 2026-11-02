@@ -27,9 +27,13 @@ export {
   type PreviewCardOpenChangeReason,
 } from 'stems-ui/preview-card'
 
-export type PreviewCardProps = previewCard.PreviewCardContextProps
+export type PreviewCardProps<Payload = unknown> = previewCard.PreviewCardContextProps<Payload>
 
-export function PreviewCard(handle: Handle<PreviewCardProps>) {
+/**
+ * `handle` connects detached `PreviewCardTrigger`s; `children` may be a function of
+ * `{ payload }`.
+ */
+export function PreviewCard<Payload = unknown>(handle: Handle<PreviewCardProps<Payload>>) {
   return () => <previewCard.Context {...handle.props} />
 }
 
@@ -37,13 +41,13 @@ export type PreviewCardTriggerProps = Props<'a'> & previewCard.PreviewCardTrigge
 
 export function PreviewCardTrigger(handle: Handle<PreviewCardTriggerProps>) {
   return () => {
-    let { mix, delay, closeDelay, ...props } = handle.props
+    let { mix, delay, closeDelay, handle: cardHandle, payload, ...props } = handle.props
 
     return (
       <a
         data-slot="preview-card-trigger"
         {...props}
-        mix={[previewCard.trigger({ delay, closeDelay }), mix]}
+        mix={[previewCard.trigger({ delay, closeDelay, handle: cardHandle, payload }), mix]}
       />
     )
   }

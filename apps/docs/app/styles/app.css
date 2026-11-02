@@ -5,3 +5,128 @@
 
 /* Registry components live outside this app, so tell Tailwind to scan them. */
 @source '../../../../packages/registry/src';
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+  .dark {
+    color-scheme: dark;
+  }
+  html {
+    scroll-padding-top: 5rem;
+  }
+}
+
+/*
+ * Rendered markdown (guides and API references). Hand-written instead of
+ * @tailwindcss/typography so it uses the theme tokens directly.
+ */
+@layer components {
+  .prose-docs {
+    @apply text-[0.9375rem] leading-7 text-foreground;
+
+    & > :first-child {
+      @apply mt-0;
+    }
+
+    & :where(h1, h2, h3, h4, h5, h6) {
+      @apply scroll-mt-20 font-semibold tracking-tight text-foreground;
+    }
+    & :where(h1) {
+      @apply mt-10 mb-4 text-3xl;
+    }
+    & :where(h2) {
+      @apply mt-12 mb-4 border-b pb-2 text-2xl;
+    }
+    & :where(h3) {
+      @apply mt-10 mb-3 text-xl;
+    }
+    & :where(h4) {
+      @apply mt-8 mb-3 text-lg;
+    }
+    & :where(h5, h6) {
+      @apply mt-6 mb-2 text-base;
+    }
+    & :where(h1, h2, h3, h4, h5, h6) code {
+      @apply text-[0.875em];
+    }
+    & .heading-anchor {
+      @apply text-inherit no-underline;
+    }
+    & .heading-anchor:hover::after {
+      content: '#';
+      @apply ml-2 font-normal text-muted-foreground;
+    }
+
+    & :where(p, ul, ol, blockquote, pre, .table-wrap) {
+      @apply my-4;
+    }
+    & :where(a:not(.heading-anchor)) {
+      @apply font-medium text-foreground underline decoration-muted-foreground/50 underline-offset-4 hover:decoration-foreground;
+    }
+    & :where(strong) {
+      @apply font-semibold;
+    }
+
+    & :where(ul) {
+      @apply list-disc pl-6;
+    }
+    & :where(ol) {
+      @apply list-decimal pl-6;
+    }
+    & :where(li) {
+      @apply my-1.5 pl-1;
+    }
+    & :where(li > ul, li > ol) {
+      @apply my-1.5;
+    }
+    & :where(li)::marker {
+      @apply text-muted-foreground;
+    }
+
+    & :where(blockquote) {
+      @apply border-l-2 pl-4 text-muted-foreground italic;
+    }
+    & :where(hr) {
+      @apply my-8;
+    }
+
+    & :where(:not(pre) > code) {
+      @apply rounded-md bg-muted px-[0.3em] py-[0.15em] font-mono text-[0.85em] break-words;
+    }
+    & :where(pre) {
+      @apply relative overflow-x-auto rounded-lg border bg-muted/50 p-4 font-mono text-[0.8125rem] leading-relaxed;
+    }
+    & :where(pre[data-lang])::before {
+      content: attr(data-lang);
+      @apply absolute top-1.5 right-3 font-sans text-[0.6875rem] text-muted-foreground uppercase;
+    }
+    & :where(pre code) {
+      @apply bg-transparent p-0 text-inherit;
+    }
+
+    & .table-wrap {
+      @apply overflow-x-auto rounded-lg border;
+    }
+    & :where(table) {
+      @apply w-full border-collapse text-sm leading-6;
+    }
+    & :where(th) {
+      @apply border-b bg-muted/50 px-3 py-2 text-left font-medium;
+    }
+    & :where(td) {
+      @apply border-b px-3 py-2 align-top;
+    }
+    & :where(tbody tr:last-child td) {
+      @apply border-b-0;
+    }
+    & :where(td code) {
+      @apply whitespace-nowrap;
+    }
+  }
+
+  .toc-link code {
+    @apply font-mono text-[0.85em];
+  }
+}

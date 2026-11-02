@@ -18,9 +18,10 @@ import { buttonVariants } from '#stems/ui/button.tsx'
  * `dialog.close()` runs.
  */
 
-export type DialogProps = dialog.DialogContextProps
+export type DialogProps<Payload = unknown> = dialog.DialogContextProps<Payload>
 
-export function Dialog(handle: Handle<DialogProps>) {
+/** `handle` connects detached `DialogTrigger`s; `children` may be a function of `{ payload }`. */
+export function Dialog<Payload = unknown>(handle: Handle<DialogProps<Payload>>) {
   return () => <dialog.Context {...handle.props} />
 }
 
@@ -28,13 +29,13 @@ export type DialogTriggerProps = Props<'button'> & dialog.DialogTriggerOptions
 
 export function DialogTrigger(handle: Handle<DialogTriggerProps>) {
   return () => {
-    let { class: className, mix, disabled, ...props } = handle.props
+    let { class: className, mix, disabled, handle: dialogHandle, payload, ...props } = handle.props
     return (
       <button
         data-slot="dialog-trigger"
         {...props}
         class={cn(className)}
-        mix={[dialog.trigger({ disabled }), mix]}
+        mix={[dialog.trigger({ disabled, handle: dialogHandle, payload }), mix]}
       />
     )
   }

@@ -50,7 +50,7 @@ Control the state with `open` and `onOpenChange(open, details)`, or let the cont
   `<span>` wrapper.
 - Because the card is rendered where you put it (not portaled to the end of `<body>`), links
   inside it follow the trigger in Tab order while it's open.
-- `createHandle()` / detached triggers / payloads, `triggerId`, the Viewport part, `actionsRef`,
+- The Viewport part, `actionsRef`,
   inline-rect anchoring for wrapped links, `--positioner-*` / `--popup-*` variables,
   `data-anchor-hidden`, `collisionAvoidance`, `collisionBoundary`, `sticky`, `positionMethod`,
   and `disableAnchorTracking` are not supported.
@@ -94,6 +94,49 @@ Control the state with `open` and `onOpenChange(open, details)`, or let the cont
 `'trigger-hover'`, `'trigger-focus'` (keyboard focus and blur), `'outside-press'`,
 `'escape-key'`, `'focus-out'` (focus left the card), and `'none'` (state changed through the
 controlled `open` prop).
+
+## Detached triggers
+
+Base UI's `createHandle()`: triggers can live anywhere in the document, outside the `Context`,
+linked by a handle. Each trigger can pass a `payload`, so one popup can serve many triggers with
+different data.
+
+```tsx
+import * as previewCard from 'stems-ui/preview-card'
+
+let people = previewCard.createHandle<{ name: string }>()
+
+// Anywhere, e.g. in a table row:
+<button mix={previewCard.trigger({ handle: people, payload: { name: 'Ada' } })}>Ada</button>
+<button mix={previewCard.trigger({ handle: people, payload: { name: 'Grace' } })}>Grace</button>
+
+// Elsewhere:
+<previewCard.Context handle={people}>
+  {({ payload }) => <div mix={previewCard.popup()}>{payload?.name}</div>}
+</previewCard.Context>
+```
+
+- `createHandle<Payload>()` returns the handle. Pass it to the `Context` (`handle` prop, read
+  once) and to each detached `trigger({ handle, payload })` (read on the trigger's first
+  render). `Payload` types `payload` in the `Context`'s children function.
+- Detached triggers register with the handle, so they behave like triggers inside the
+  `Context`: `data-popup-open` follows the card, hover and focus open it from any trigger, the popup anchors to the active trigger, focus returns to it, and a
+  press on another trigger counts as inside (it moves the popup instead of dismissing it).
+- The active trigger's `payload` is `{ payload }` in a children render function (re-run each
+  time the `Context` renders) and `payload` on the context value
+  (`handle.context.get(previewCard.Context).payload`). It's `undefined` until a trigger has been
+  active, and stays while the popup animates out. A children function only works with JSX
+  (`createElement` rejects function children). `payload` also works on triggers inside the
+  `Context`.
+- Handle methods: `isOpen`, `open(triggerId?)` (opens, or moves an open popup, to the trigger
+  with that `id`; reason `'imperative-action'`), `close()`. They act on the mounted `Context`
+  and are ignored while none is mounted. A remounted `Context` starts fresh.
+- `Context` props `triggerId` (controlled, pair with `open`; store `details.trigger?.id` from
+  `onOpenChange`) and `defaultTriggerId` pick the active trigger by element `id`.
+- Detached triggers aren't re-rendered by the `Context`; they update their state attributes
+  directly when it renders. On the server nothing is shared (a handle is usually a module-level
+  singleton), so a detached trigger renders closed and without `aria-controls`; it gets
+  `aria-controls` once the `Context` mounts in the browser.
 
 ## Behavior notes
 

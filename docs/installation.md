@@ -121,13 +121,13 @@ import {
   onMenuSelect,
 } from '#app/ui/dropdown-menu.tsx'
 
-export const ActionsMenu = clientEntry(import.meta.url, function ActionsMenu(handle: Handle) {
+export const ActionsMenu = clientEntry(import.meta.url, function ActionsMenu(_handle: Handle) {
   return () => (
-    <div mix={onMenuSelect((event) => console.log(event.item.name))}>
+    <div mix={onMenuSelect((event) => console.log(event.value))}>
       <DropdownMenu>
         <DropdownMenuTrigger>Open</DropdownMenuTrigger>
         <DropdownMenuContent>
-          <DropdownMenuItem name="edit">Edit</DropdownMenuItem>
+          <DropdownMenuItem value="edit">Edit</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
     </div>

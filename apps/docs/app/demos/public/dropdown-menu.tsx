@@ -4,9 +4,13 @@ import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuEmpty,
+  DropdownMenuFilterInput,
+  DropdownMenuFilterProvider,
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuList,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
@@ -108,6 +112,8 @@ export const DropdownMenuDemo = clientEntry(
           </DropdownMenuContent>
         </DropdownMenu>
 
+        <FilterableExample />
+
         <p class="text-sm text-muted-foreground" data-testid="menu-result">
           Last action: <span class="font-medium text-foreground">{lastAction}</span> · Status bar{' '}
           {showStatusBar ? 'on' : 'off'} · Panel {position}
@@ -116,3 +122,46 @@ export const DropdownMenuDemo = clientEntry(
     )
   },
 )
+
+const recentFolders = ['Inbox', 'Drafts', 'Archive']
+const allFolders = ['Projects', 'Receipts', 'Résumés', 'Photos', 'Travel', 'Taxes 2026']
+
+/**
+ * A filterable menu: type to narrow the folders, use the arrow keys while focus stays in the
+ * input, and press Enter to pick the highlighted one.
+ */
+function FilterableExample() {
+  return () => (
+    <DropdownMenuFilterProvider autoHighlight>
+      <DropdownMenu>
+        <DropdownMenuTrigger class={buttonVariants({ variant: 'outline' })}>
+          Move to folder…
+        </DropdownMenuTrigger>
+        {/* Its own data-slot keeps the first demo's `dropdown-menu-content` selector unique. */}
+        <DropdownMenuContent data-slot="dropdown-menu-filter-content" class="w-60">
+          <DropdownMenuFilterInput
+            aria-label="Filter folders"
+            placeholder="Filter folders…"
+            showClear
+            data-testid="menu-filter-input"
+          />
+          <DropdownMenuEmpty data-testid="menu-filter-empty">No folders found.</DropdownMenuEmpty>
+          <DropdownMenuList>
+            <DropdownMenuGroup>
+              <DropdownMenuLabel>Recent</DropdownMenuLabel>
+              {recentFolders.map((folder) => (
+                <DropdownMenuItem value={`move:${folder}`}>{folder}</DropdownMenuItem>
+              ))}
+            </DropdownMenuGroup>
+            <DropdownMenuGroup>
+              <DropdownMenuLabel>All folders</DropdownMenuLabel>
+              {allFolders.map((folder) => (
+                <DropdownMenuItem value={`move:${folder}`}>{folder}</DropdownMenuItem>
+              ))}
+            </DropdownMenuGroup>
+          </DropdownMenuList>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </DropdownMenuFilterProvider>
+  )
+}

@@ -12,14 +12,25 @@ import type { AnchorPoint } from './anchor.ts'
 import { splitOptions } from './lib/collapsible-panel.ts'
 import { createDelayGroup } from './lib/delay-group.ts'
 import type { DelayGroup, DelayGroupMember } from './lib/delay-group.ts'
-import { createPopupArrow, createPopupStore, createPopupSurface } from './lib/popup.ts'
+import {
+  attachPopupHandle,
+  bindPopupTrigger,
+  createPopupArrow,
+  createPopupStore,
+  createPopupSurface,
+} from './lib/popup.ts'
 import type {
   PopupOpenChangeDetails,
   PopupOpenChangeReason,
   PopupPositionOptions,
   PopupStore,
+  PopupTriggerIdProps,
 } from './lib/popup.ts'
+import { createPopupHandle, resolvePayloadChildren } from './lib/popup-handle.ts'
+import type { PopupHandle, PopupPayloadChildren } from './lib/popup-handle.ts'
 import { createHintTrigger } from './lib/tooltip-trigger.ts'
+
+export type { PopupPayloadState as TooltipPayloadState } from './lib/popup-handle.ts'
 
 export type {
   PopupAlign as TooltipAlign,
@@ -95,7 +106,20 @@ function TooltipDelayProvider(handle: Handle<TooltipProviderProps, DelayGroup>):
 // ---------------------------------------------------------------------------------------------
 // Context (root)
 
-export interface TooltipContextProps {
+/**
+ * Links a `Context` with triggers rendered outside it (Base UI's `Tooltip.Handle`): `isOpen`,
+ * `open(triggerId?)`, `close()`.
+ */
+export type TooltipHandle<Payload = unknown> = PopupHandle<Payload, 'tooltip'>
+
+/** Creates a handle for detached triggers (Base UI's `Tooltip.createHandle()`). */
+export function createHandle<Payload = unknown>(): TooltipHandle<Payload> {
+  return createPopupHandle<Payload, 'tooltip'>('tooltip')
+}
+
+export interface TooltipContextProps<Payload = unknown> extends PopupTriggerIdProps {
+  /** Connects triggers rendered outside the `Context` (`trigger({ handle })`). Read once. */
+  handle?: TooltipHandle<Payload>
   /** Whether the tooltip is open (controlled). */
   open?: boolean
   /**
@@ -125,11 +149,16 @@ export interface TooltipContextProps {
    * @default 'none'
    */
   trackCursorAxis?: TooltipTrackCursorAxis
-  children?: RemixNode
+  /** Nodes, or a function of `{ payload }` (the active trigger's `payload`). */
+  children?: PopupPayloadChildren<RemixNode, Payload>
 }
 
 /** Trigger options (Base UI's `Tooltip.Trigger` props). */
 export interface TooltipTriggerOptions {
+  /** The tooltip to control when the trigger is outside its `Context`. Read once. */
+  handle?: TooltipHandle<any>
+  /** Data for the popup while this trigger is active (`payload` in the `Context`). */
+  payload?: unknown
   /**
    * Hover-open delay in ms. Inside a `Provider`, defaults to the provider's `delay`, and is `0`
    * while another tooltip of the group is open or just closed.
@@ -193,6 +222,7 @@ function TooltipRoot(handle: Handle<TooltipContextProps, TooltipContextValue>): 
     update: () => handle.update(),
     signal: handle.signal,
     createChangeEvent: (open, details) => new TooltipChangeEvent(open, details.reason),
+    handle: handle.props.handle,
   })
 
   let member: DelayGroupMember = {
@@ -260,6 +290,7 @@ function TooltipRoot(handle: Handle<TooltipContextProps, TooltipContextValue>): 
     },
   }) as TooltipContextValue
   handle.context.set(context)
+  attachPopupHandle(handle.props.handle, context, store, handle.signal)
 
   let lastOpen = store.open
   if (lastOpen && group) group.notifyOpen(member)
@@ -291,8 +322,21 @@ function TooltipRoot(handle: Handle<TooltipContextProps, TooltipContextValue>): 
       })
     }
 
-    return handle.props.children
+    return resolvePayloadChildren(handle.props.children, store.payload)
   }
+}
+
+// A detached trigger's context while no `Context` is attached: closed and inert.
+function detachedContext(store: PopupStore): TooltipContextValue {
+  return Object.create(store, {
+    instant: { value: undefined },
+    disabled: { value: false },
+    disableHoverablePopup: { value: false },
+    trackCursorAxis: { value: 'none' },
+    group: { value: null },
+    _trackPointer: { value() {} },
+    _cursorAnchor: { value: () => null },
+  }) as TooltipContextValue
 }
 
 function getContext(handle: MixinHandle<HTMLElement>): TooltipContextValue {
@@ -303,13 +347,26 @@ const OPEN_DELAY = 600
 
 const triggerMixin: MixinFactory<HTMLElement, [options?: TooltipTriggerOptions], ElementProps> =
   createMixin<HTMLElement, [options?: TooltipTriggerOptions], ElementProps>((handle) => {
-    let context = getContext(handle)
+    let binding = bindPopupTrigger(
+      handle,
+      getContext(handle) as TooltipContextValue | undefined,
+      detachedContext,
+    )
+    let context = binding.context
     let trigger = createHintTrigger(handle, context, {
       onPointer: (event) => context._trackPointer(event),
+      isDetached: () => binding.detached,
     })
     return (options, props) => {
       ;[options] = splitOptions(options, props)
       let triggerOptions = options ?? {}
+      binding.bind(triggerOptions.handle, () => {
+        trigger.refresh()
+        let node = trigger.entry.node
+        if (!node) return
+        let disabled = context.disabled || (triggerOptions.disabled ?? false)
+        node.toggleAttribute('data-trigger-disabled', disabled)
+      })
       let disabled = context.disabled || (triggerOptions.disabled ?? false)
       return [
         attrs({ 'data-trigger-disabled': disabled ? '' : undefined }),
@@ -328,6 +385,7 @@ const triggerMixin: MixinFactory<HTMLElement, [options?: TooltipTriggerOptions],
             closeOnClick: triggerOptions.closeOnClick ?? true,
             hoverablePopup: !context.disableHoverablePopup && axis !== 'both',
             trackPointer: axis !== 'none',
+            payload: triggerOptions.payload,
           }
         }),
       ]
@@ -382,16 +440,18 @@ export const Provider: (handle: Handle<TooltipProviderProps, DelayGroup>) => () 
 /**
  * Provider that owns one tooltip's open state (Base UI's `Tooltip.Root`). Props: `open` /
  * `defaultOpen` / `onOpenChange(open, details)`, `onOpenChangeComplete`, `disabled`,
- * `disableHoverablePopup`, `trackCursorAxis`.
+ * `disableHoverablePopup`, `trackCursorAxis`, `handle`, `triggerId` / `defaultTriggerId`.
+ * `children` may be a function of `{ payload }`.
  */
-export const Context: (
-  handle: Handle<TooltipContextProps, TooltipContextValue>,
-) => () => RemixNode = TooltipRoot
+export const Context: <Payload = unknown>(
+  handle: Handle<TooltipContextProps<Payload>, TooltipContextValue>,
+) => () => RemixNode = TooltipRoot as any
 
 /**
  * The element the tooltip describes. Opens it on hover (after `delay`) and on keyboard focus;
  * closes it on press, blur, and pointer leave. Renders `data-popup-open` and
- * `data-trigger-disabled`. Options: `delay`, `closeDelay`, `closeOnClick`, `disabled`.
+ * `data-trigger-disabled`. Options: `delay`, `closeDelay`, `closeOnClick`, `disabled`, and
+ * `handle` / `payload` for a trigger outside the `Context`.
  */
 export const trigger = triggerMixin
 

@@ -79,3 +79,25 @@ describe('tooltip (server render)', () => {
     expect(popup).toContain('data-align="center"')
   })
 })
+
+describe('tooltip detached triggers (server render)', () => {
+  it('renders a detached trigger closed and the payload function', async () => {
+    let h = tooltip.createHandle<string>()
+    let html = await renderToString(
+      <div>
+        <button mix={tooltip.trigger({ handle: h, payload: 'Bold' })}>Detached</button>
+        <tooltip.Context handle={h}>
+          {({ payload }) => (
+            <div class="popup" mix={tooltip.popup()}>
+              tip:{payload ?? 'none'}
+            </div>
+          )}
+        </tooltip.Context>
+      </div>,
+    )
+    let trigger = getTag(html, /<button[^>]*>Detached/)
+    expect(trigger).not.toContain('data-popup-open')
+    expect(trigger).not.toContain('aria-expanded')
+    expect(html).toContain('tip:none')
+  })
+})

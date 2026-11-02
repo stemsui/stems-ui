@@ -101,6 +101,53 @@ Change reasons: `'trigger-press'`, `'outside-press'`, `'escape-key'`, `'close-pr
 addition: it covers close requests that aren't an Escape key press, such as the Android back
 gesture.
 
+## Detached triggers
+
+Base UI's `createHandle()`: triggers can live anywhere in the document, outside the `Context`,
+linked by a handle. Each trigger can pass a `payload`, so one dialog can serve many triggers with
+different data.
+
+```tsx
+import * as dialog from 'stems-ui/dialog'
+
+let editUser = dialog.createHandle<{ id: string; name: string }>()
+
+// Anywhere, e.g. in each table row:
+<button mix={dialog.trigger({ handle: editUser, payload: user })}>Edit</button>
+
+// Once, elsewhere:
+<dialog.Context handle={editUser}>
+  {({ payload }) => (
+    <dialog mix={dialog.popup()}>
+      <h2 mix={dialog.title()}>Edit {payload?.name}</h2>
+    </dialog>
+  )}
+</dialog.Context>
+```
+
+- `createHandle<Payload>()` returns the handle. Pass it to the `Context` (`handle` prop, read
+  once) and to each detached `trigger({ handle, payload })` (read on the trigger's first
+  render). `Payload` types `payload` in the `Context`'s children function.
+- Detached triggers register with the handle, so they behave like triggers inside the
+  `Context`: `aria-expanded`, `aria-controls`, and `data-popup-open` follow the dialog, focus
+  returns to the trigger that opened it, and (for non-modal dialogs) presses on any trigger
+  count as inside.
+- The payload is `{ payload }` in a children render function (re-run each time the `Context`
+  renders) and `payload` on the context value. It's the active trigger's `payload`, or the one
+  given to `openWithPayload()`. A children function only works with JSX (`createElement`
+  rejects function children).
+- Handle methods: `isOpen`, `open(triggerId?)` (optionally associated with the trigger with
+  that `id`), `openWithPayload(payload)` (no trigger; focus returns to the element focused
+  before opening), and `close()`, all with reason `'imperative-action'`. They act on the mounted
+  `Context` and are ignored while none is mounted.
+- `Context` props `triggerId` (controlled, pair with `open`; store `details.trigger?.id` from
+  `onOpenChange`) and `defaultTriggerId` pick the active trigger by element `id`.
+- Detached triggers aren't re-rendered by the `Context`; they update their state attributes
+  directly when it renders. On the server nothing is shared, so a detached trigger renders
+  closed and without `aria-controls`.
+- The same handle type works for `stems-ui/alert-dialog` and `stems-ui/drawer`, which export
+  their own `createHandle()`.
+
 ## Behavior notes
 
 - **Native `<dialog>`.** A closed dialog stays in the DOM and is hidden by the UA stylesheet
@@ -163,9 +210,6 @@ ways to draw a backdrop:
 
 ## Not yet supported
 
-- Detached triggers (`Dialog.createHandle()`, `handle`, `payload`, `triggerId` /
-  `defaultTriggerId`). Multiple `trigger()`s inside one `Context` do work. The last one pressed
-  is the active trigger, which gets `data-popup-open` and receives focus back on close.
 - `actionsRef.unmount()` and `details.preventUnmountOnClose()`. The popup is app-owned markup and
   is never unmounted, and Stems always waits for CSS animations before closing.
 - `details.allowPropagation()`.
