@@ -15,9 +15,10 @@ pitfalls we've already hit.
    - anchored popup: `src/popover.ts` built on `src/lib/popup.ts` (read its doc comments)
    - modal: `src/dialog.ts` built on `src/lib/dialog-root.ts`
    - list with indicators: `src/lib/menu.tsx`
-3. If `@remix-run/ui` has a reference implementation, its tagged source with tests is at
-   `/tmp/claude-1000/-home-jdeanwaite-Documents-Default-Project/96b2defe-af54-45ae-b6c4-bcdc9c1ecde4/scratchpad/remix-src/ui/src/` (MIT; port with the
-   attribution header from CONVENTIONS.md).
+3. If `@remix-run/ui` has a reference implementation, read its tagged source with tests (MIT;
+   port with the attribution header from CONVENTIONS.md). The npm package omits tests, so fetch
+   the tag:
+   `curl -sL https://codeload.github.com/remix-run/remix/tar.gz/refs/tags/ui@0.13.0 | tar xz --wildcards '*/packages/ui/*'`
 4. shadcn styles to copy: `https://ui.shadcn.com/r/styles/base-vega/<item>.json`
    (`files[0].content`). The theme already includes `tw-animate-css` and `shadcn/tailwind.css`.
 
@@ -60,7 +61,7 @@ keyboard and pointer behavior and the visuals in the docs app:
 pnpm --filter @stemsui/docs run css:build
 (cd apps/docs && PORT=<your port> NODE_ENV=development node --import remix/node-tsx server.ts) &
 # drive http://localhost:<port>/components/<item> with Playwright
-# (import '/home/jdeanwaite/dev/stems-ui/node_modules/playwright/index.mjs'),
+# (a script outside the repo can import '<repo>/node_modules/playwright/index.mjs'),
 # screenshot light and dark (add class "dark" to <html>), then stop the server.
 ```
 
