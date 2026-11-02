@@ -2,6 +2,7 @@ import { unsafeHTML, type Handle } from 'remix/component'
 
 import type { ModuleReference, TocEntry } from '../content.ts'
 import { demos } from '../demos/index.ts'
+import { highlightCode } from '../highlight.ts'
 import { routes } from '../routes.ts'
 import { CopyButton } from '../ui/public/copy-button.tsx'
 import { Layout } from './layout.tsx'
@@ -67,8 +68,11 @@ export function ComponentPage(handle: Handle<ComponentPageProps>) {
               </summary>
               <div class="relative border-t">
                 <CopyButton target="demo-source" label="Copy code" class="absolute top-2 right-2" />
-                <pre class="max-h-[32rem] overflow-auto bg-muted/50 p-4 font-mono text-[0.8125rem] leading-relaxed">
-                  <code id="demo-source">{source}</code>
+                <pre
+                  class="th-code max-h-[32rem] overflow-auto bg-muted/50 p-4 font-mono text-[0.8125rem] leading-relaxed"
+                  data-lang="tsx"
+                >
+                  <code id="demo-source" innerHTML={unsafeHTML(highlightCode(source, 'tsx'))} />
                 </pre>
               </div>
             </details>

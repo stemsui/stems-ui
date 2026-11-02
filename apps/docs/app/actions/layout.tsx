@@ -19,6 +19,16 @@ export interface LayoutProps {
 const navLinkClass =
   'block rounded-md px-2 py-1 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground aria-[current=page]:bg-accent aria-[current=page]:font-medium aria-[current=page]:text-foreground'
 
+const githubUrl = 'https://github.com/stemsui/stems-ui'
+
+function GitHubIcon() {
+  return () => (
+    <svg aria-hidden="true" viewBox="0 0 24 24" class="size-4 shrink-0" fill="currentColor">
+      <path d="M12 .75a11.25 11.25 0 0 0-3.558 21.922c.563.104.768-.244.768-.542 0-.267-.01-.975-.015-1.914-3.13.68-3.79-1.508-3.79-1.508-.511-1.3-1.249-1.646-1.249-1.646-1.021-.699.078-.685.078-.685 1.13.08 1.724 1.16 1.724 1.16 1.004 1.72 2.633 1.223 3.274.935.102-.727.393-1.223.715-1.504-2.499-.284-5.126-1.25-5.126-5.565 0-1.23.44-2.235 1.16-3.023-.117-.285-.503-1.43.11-2.98 0 0 .945-.303 3.095 1.155a10.792 10.792 0 0 1 5.628 0c2.149-1.458 3.092-1.155 3.092-1.155.615 1.55.229 2.695.112 2.98.722.788 1.158 1.793 1.158 3.023 0 4.327-2.63 5.278-5.137 5.557.404.35.765 1.042.765 2.1 0 1.516-.014 2.74-.014 3.112 0 .3.203.65.774.54A11.25 11.25 0 0 0 12 .75Z" />
+    </svg>
+  )
+}
+
 function SidebarNav(handle: Handle<{ current?: string }>) {
   return () => {
     let { current } = handle.props
@@ -143,6 +153,16 @@ export function Layout(handle: Handle<LayoutProps>) {
               </a>
             </nav>
             <div class="ml-auto flex items-center gap-1">
+              <a
+                href={githubUrl}
+                target="_blank"
+                rel="noreferrer"
+                aria-label="GitHub repository"
+                title="GitHub repository"
+                class="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+              >
+                <GitHubIcon />
+              </a>
               <ThemeToggle />
             </div>
           </div>
@@ -162,9 +182,18 @@ export function Layout(handle: Handle<LayoutProps>) {
             {/* Small screens: the sidebar collapses into a disclosure. */}
             <details class="mb-6 rounded-lg border md:hidden">
               <summary class="cursor-pointer px-4 py-2 text-sm font-medium">Menu</summary>
-              <div class="border-t p-2">
+              <nav aria-label="Mobile" class="border-t p-2">
+                <a
+                  href={githubUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  class="mb-4 flex items-center gap-2 rounded-md px-2 py-1 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+                >
+                  <GitHubIcon />
+                  GitHub
+                </a>
                 <SidebarNav current={current} />
-              </div>
+              </nav>
             </details>
             {children}
           </main>

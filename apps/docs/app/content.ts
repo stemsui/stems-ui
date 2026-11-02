@@ -6,6 +6,7 @@ import { Marked, type Tokens } from 'marked'
 
 import { rootDir } from './assets.ts'
 import { demos } from './demos/index.ts'
+import { highlightCode } from './highlight.ts'
 
 /** The monorepo root (`apps/docs/../..`). */
 export const repoRoot = path.resolve(rootDir, '../..')
@@ -191,7 +192,7 @@ export function renderMarkdown(source: string, options: RenderOptions = {}): Ren
       code({ text, lang }: Tokens.Code) {
         let language = (lang ?? '').split(/\s+/)[0]
         let label = language ? ` data-lang="${escapeHtml(language)}"` : ''
-        return `<pre${label}><code>${escapeHtml(text.replace(/\n$/, ''))}</code></pre>\n`
+        return `<pre class="th-code"${label}><code>${highlightCode(text.replace(/\n$/, ''), language)}</code></pre>\n`
       },
       table(token: Tokens.Table) {
         // Wide API tables scroll horizontally instead of stretching the page.

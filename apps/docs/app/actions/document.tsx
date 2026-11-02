@@ -3,6 +3,7 @@ import { unsafeHTML } from 'remix/component'
 import { ImportMap } from 'remix/component/server'
 
 import { scriptEntry } from '../assets.ts'
+import { highlightThemeCss } from '../highlight.ts'
 import { THEME_STORAGE_KEY } from '../ui/public/theme-toggle.tsx'
 
 // Runs before first paint so the page never flashes the wrong theme: a saved choice wins,
@@ -37,6 +38,7 @@ export function Document(handle: Handle<DocumentProps>) {
           <script innerHTML={unsafeHTML(themeScript)} />
           <title>{title}</title>
           <link rel="stylesheet" href="/styles.css" />
+          <style innerHTML={unsafeHTML(highlightThemeCss)} />
           {head}
           <ImportMap value={importMap} />
           {preloads.map((preloadHref) => (
